@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { requestAccess, signTransaction } from '@stellar/freighter-api'
-import { Horizon, TransactionBuilder, Networks, Operation, Asset } from '@stellar/stellar-sdk'
+import {
+  Horizon,
+  TransactionBuilder,
+  Networks,
+  Operation,
+  Asset,
+} from '@stellar/stellar-sdk'
 import './App.css'
 
 function App() {
@@ -12,6 +18,7 @@ function App() {
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   const server = new Horizon.Server(
     'https://horizon-testnet.stellar.org'
@@ -19,6 +26,8 @@ function App() {
 
   const fetchBalance = async (address: string) => {
     try {
+      setError('')
+
       const account = await server.loadAccount(address)
 
       const xlmBalance = account.balances.find(
@@ -130,7 +139,7 @@ function App() {
       setRecipient('')
       setAmount('')
 
-      // Refresh balance
+      // Refresh balance after transaction
       await fetchBalance(walletAddress)
 
       setLoading(false)
@@ -139,6 +148,14 @@ function App() {
       setError('Transaction failed. Please check the address and balance.')
       setLoading(false)
     }
+  }
+
+  const refreshWalletBalance = async () => {
+    if (!walletAddress) return
+
+    setRefreshing(true)
+    await fetchBalance(walletAddress)
+    setRefreshing(false)
   }
 
   const disconnectWallet = () => {
@@ -204,9 +221,10 @@ function App() {
 
             <button
               className="refresh-btn"
-              onClick={() => fetchBalance(walletAddress)}
+              onClick={refreshWalletBalance}
+              disabled={refreshing}
             >
-              Refresh Balance
+              {refreshing ? 'Refreshing...' : 'Refresh Balance'}
             </button>
           </div>
         )}
