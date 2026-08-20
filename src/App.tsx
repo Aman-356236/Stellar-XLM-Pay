@@ -74,18 +74,35 @@ function App() {
         return
       }
 
-      if (!recipient) {
+      const cleanedRecipient = recipient.trim()
+
+      if (!cleanedRecipient) {
         setError('Please enter a recipient address.')
         return
       }
 
-      if (!recipient.startsWith('G') || recipient.length !== 56) {
+      if (
+        !cleanedRecipient.startsWith('G') ||
+        cleanedRecipient.length !== 56
+      ) {
         setError('Please enter a valid Stellar recipient address.')
         return
       }
 
-      if (!amount || Number(amount) <= 0) {
+      const numericAmount = Number(amount)
+
+      if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
         setError('Please enter a valid XLM amount.')
+        return
+      }
+
+      const currentBalance = Number(balance)
+
+      if (
+        Number.isFinite(currentBalance) &&
+        numericAmount >= currentBalance
+      ) {
+        setError('Insufficient XLM balance for this transaction.')
         return
       }
 
@@ -101,7 +118,7 @@ function App() {
       })
         .addOperation(
           Operation.payment({
-            destination: recipient,
+            destination: cleanedRecipient,
             asset: Asset.native(),
             amount: amount,
           })
@@ -119,7 +136,6 @@ function App() {
 
       if (signedTransaction.error) {
         setError(signedTransaction.error.message)
-        setLoading(false)
         return
       }
 
@@ -141,11 +157,12 @@ function App() {
 
       // Refresh balance after transaction
       await fetchBalance(walletAddress)
-
-      setLoading(false)
     } catch (err) {
       console.error(err)
-      setError('Transaction failed. Please check the address and balance.')
+      setError(
+        'Transaction failed. Please check the address and balance.'
+      )
+    } finally {
       setLoading(false)
     }
   }
@@ -153,9 +170,12 @@ function App() {
   const refreshWalletBalance = async () => {
     if (!walletAddress) return
 
-    setRefreshing(true)
-    await fetchBalance(walletAddress)
-    setRefreshing(false)
+    try {
+      setRefreshing(true)
+      await fetchBalance(walletAddress)
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   const disconnectWallet = () => {
