@@ -19,6 +19,7 @@ function App() {
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const server = new Horizon.Server(
     'https://horizon-testnet.stellar.org'
@@ -46,6 +47,7 @@ function App() {
       setError('')
       setSuccess('')
       setTransactionHash('')
+      setCopied(false)
 
       const response = await requestAccess()
 
@@ -68,6 +70,7 @@ function App() {
       setError('')
       setSuccess('')
       setTransactionHash('')
+      setCopied(false)
 
       if (!walletAddress) {
         setError('Please connect your wallet first.')
@@ -108,10 +111,8 @@ function App() {
 
       setLoading(true)
 
-      // Load sender account from Stellar Testnet
       const account = await server.loadAccount(walletAddress)
 
-      // Build transaction
       const transaction = new TransactionBuilder(account, {
         fee: '100',
         networkPassphrase: Networks.TESTNET,
@@ -126,10 +127,8 @@ function App() {
         .setTimeout(180)
         .build()
 
-      // Convert transaction to XDR
       const transactionXDR = transaction.toXDR()
 
-      // Ask Freighter to sign the transaction
       const signedTransaction = await signTransaction(transactionXDR, {
         networkPassphrase: Networks.TESTNET,
       })
@@ -139,23 +138,19 @@ function App() {
         return
       }
 
-      // Rebuild signed transaction
       const signedTx = TransactionBuilder.fromXDR(
         signedTransaction.signedTxXdr,
         Networks.TESTNET
       )
 
-      // Submit transaction to Stellar Testnet
       const result = await server.submitTransaction(signedTx)
 
       setSuccess('XLM sent successfully! 🎉')
       setTransactionHash(result.hash)
 
-      // Clear form
       setRecipient('')
       setAmount('')
 
-      // Refresh balance after transaction
       await fetchBalance(walletAddress)
     } catch (err) {
       console.error(err)
@@ -164,6 +159,22 @@ function App() {
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  const copyTransactionHash = async () => {
+    if (!transactionHash) return
+
+    try {
+      await navigator.clipboard.writeText(transactionHash)
+      setCopied(true)
+
+      setTimeout(() => {
+        setCopied(false)
+      }, 2000)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to copy transaction hash.')
     }
   }
 
@@ -186,6 +197,7 @@ function App() {
     setTransactionHash('')
     setRecipient('')
     setAmount('')
+    setCopied(false)
   }
 
   return (
@@ -254,11 +266,23 @@ function App() {
             <p>{success}</p>
 
             {transactionHash && (
-              <p>
-                Transaction Hash:
-                <br />
-                <span>{transactionHash}</span>
-              </p>
+              <div className="transaction-result">
+                <p className="transaction-title">
+                  Transaction Hash:
+                </p>
+
+                <p className="transaction-hash">
+                  {transactionHash}
+                </p>
+
+                <button
+                  type="button"
+                  className="copy-btn"
+                  onClick={copyTransactionHash}
+                >
+                  {copied ? '✓ Copied!' : '📋 Copy Hash'}
+                </button>
+              </div>
             )}
           </div>
         )}

@@ -184,6 +184,28 @@ input {
 }
 
 /* =========================
+   COPY HASH BUTTON
+========================= */
+
+.copy-hash-btn {
+  margin-top: 12px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #047857;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.copy-hash-btn:hover {
+  background: #065f46;
+  transform: translateY(-1px);
+}
+
+/* =========================
    SEND XLM
 ========================= */
 
