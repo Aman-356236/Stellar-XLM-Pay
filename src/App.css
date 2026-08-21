@@ -114,6 +114,10 @@ input {
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
 }
 
+/* =========================
+   WALLET ADDRESS
+========================= */
+
 .wallet-address {
   max-width: 600px;
   margin: 18px auto 0;
@@ -123,7 +127,42 @@ input {
   color: #2563eb;
   font-size: 14px;
   font-weight: 600;
+}
+
+.wallet-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wallet-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wallet-short-address {
+  font-family: monospace;
   word-break: break-all;
+}
+
+.wallet-copy-btn {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.wallet-copy-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
 /* =========================
@@ -186,6 +225,35 @@ input {
 .refresh-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* =========================
+   TRANSACTION STATUS
+========================= */
+
+.transaction-status {
+  width: min(600px, 92%);
+  margin: 20px auto;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.06);
+}
+
+.status-spinner {
+  margin-right: 8px;
+}
+
+.transaction-confirmed {
+  margin-top: 10px !important;
+  color: #047857;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 /* =========================
@@ -290,6 +358,11 @@ input {
 
 .send-input::placeholder {
   color: #94a3b8;
+}
+
+.send-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .send-btn {
@@ -439,6 +512,15 @@ input {
 
   .transaction-result {
     padding: 14px;
+  }
+
+  .wallet-display {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wallet-copy-btn {
+    width: 100%;
   }
 }
 

@@ -21,6 +21,7 @@ function App() {
   const [refreshing, setRefreshing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [walletCopied, setWalletCopied] = useState(false)
+  const [transactionStatus, setTransactionStatus] = useState('')
 
   const server = new Horizon.Server(
     'https://horizon-testnet.stellar.org'
@@ -50,6 +51,7 @@ function App() {
       setTransactionHash('')
       setCopied(false)
       setWalletCopied(false)
+      setTransactionStatus('')
 
       const response = await requestAccess()
 
@@ -73,6 +75,7 @@ function App() {
       setSuccess('')
       setTransactionHash('')
       setCopied(false)
+      setTransactionStatus('')
 
       if (!walletAddress) {
         setError('Please connect your wallet first.')
@@ -138,6 +141,7 @@ function App() {
       }
 
       setLoading(true)
+      setTransactionStatus('Preparing transaction...')
 
       const account = await server.loadAccount(walletAddress)
 
@@ -157,14 +161,19 @@ function App() {
 
       const transactionXDR = transaction.toXDR()
 
+      setTransactionStatus('Waiting for Freighter approval...')
+
       const signedTransaction = await signTransaction(transactionXDR, {
         networkPassphrase: Networks.TESTNET,
       })
 
       if (signedTransaction.error) {
         setError(signedTransaction.error.message)
+        setTransactionStatus('')
         return
       }
+
+      setTransactionStatus('Submitting transaction...')
 
       const signedTx = TransactionBuilder.fromXDR(
         signedTransaction.signedTxXdr,
@@ -175,6 +184,7 @@ function App() {
 
       setSuccess('XLM sent successfully! 🎉')
       setTransactionHash(result.hash)
+      setTransactionStatus('Transaction confirmed!')
 
       setRecipient('')
       setAmount('')
@@ -182,6 +192,7 @@ function App() {
       await fetchBalance(walletAddress)
     } catch (err) {
       console.error(err)
+      setTransactionStatus('')
       setError(
         'Transaction failed. Please check the recipient address and balance.'
       )
@@ -243,6 +254,7 @@ function App() {
     setAmount('')
     setCopied(false)
     setWalletCopied(false)
+    setTransactionStatus('')
   }
 
   const shortWalletAddress = walletAddress
@@ -326,9 +338,22 @@ function App() {
           </div>
         )}
 
+        {transactionStatus && !success && (
+          <div className="transaction-status">
+            <span className="status-spinner">⏳</span>
+            <span>{transactionStatus}</span>
+          </div>
+        )}
+
         {success && (
           <div className="success-message">
             <p>{success}</p>
+
+            {transactionStatus && (
+              <p className="transaction-confirmed">
+                ✓ {transactionStatus}
+              </p>
+            )}
 
             {transactionHash && (
               <div className="transaction-result">
@@ -369,6 +394,7 @@ function App() {
             className="send-input"
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
+            disabled={loading}
           />
 
           <input
@@ -379,6 +405,7 @@ function App() {
             step="0.0000001"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            disabled={loading}
           />
 
           <button
@@ -386,7 +413,7 @@ function App() {
             onClick={sendXLM}
             disabled={loading}
           >
-            {loading ? 'Sending...' : 'Send XLM'}
+            {loading ? 'Processing Transaction...' : 'Send XLM'}
           </button>
         </section>
       )}
