@@ -20,6 +20,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [walletCopied, setWalletCopied] = useState(false)
 
   const server = new Horizon.Server(
     'https://horizon-testnet.stellar.org'
@@ -48,6 +49,7 @@ function App() {
       setSuccess('')
       setTransactionHash('')
       setCopied(false)
+      setWalletCopied(false)
 
       const response = await requestAccess()
 
@@ -178,6 +180,22 @@ function App() {
     }
   }
 
+  const copyWalletAddress = async () => {
+    if (!walletAddress) return
+
+    try {
+      await navigator.clipboard.writeText(walletAddress)
+      setWalletCopied(true)
+
+      setTimeout(() => {
+        setWalletCopied(false)
+      }, 2000)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to copy wallet address.')
+    }
+  }
+
   const refreshWalletBalance = async () => {
     if (!walletAddress) return
 
@@ -198,7 +216,12 @@ function App() {
     setRecipient('')
     setAmount('')
     setCopied(false)
+    setWalletCopied(false)
   }
+
+  const shortWalletAddress = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)}`
+    : ''
 
   return (
     <div className="app">
@@ -231,9 +254,25 @@ function App() {
         </button>
 
         {walletAddress && (
-          <p className="wallet-address">
-            Connected: {walletAddress}
-          </p>
+          <div className="wallet-address">
+            <div className="wallet-label">
+              <span>Connected Wallet</span>
+            </div>
+
+            <div className="wallet-display">
+              <span className="wallet-short-address">
+                {shortWalletAddress}
+              </span>
+
+              <button
+                type="button"
+                className="wallet-copy-btn"
+                onClick={copyWalletAddress}
+              >
+                {walletCopied ? '✓ Copied!' : '📋 Copy'}
+              </button>
+            </div>
+          </div>
         )}
 
         {balance && (
