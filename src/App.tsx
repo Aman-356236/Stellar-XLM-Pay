@@ -94,20 +94,46 @@ function App() {
         return
       }
 
-      const numericAmount = Number(amount)
+      if (cleanedRecipient === walletAddress) {
+        setError('You cannot send XLM to your own wallet.')
+        return
+      }
 
-      if (!amount || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-        setError('Please enter a valid XLM amount.')
+      const cleanedAmount = amount.trim()
+
+      if (!cleanedAmount) {
+        setError('Please enter an XLM amount.')
+        return
+      }
+
+      const numericAmount = Number(cleanedAmount)
+
+      if (
+        !Number.isFinite(numericAmount) ||
+        numericAmount <= 0
+      ) {
+        setError('Please enter a valid XLM amount greater than 0.')
+        return
+      }
+
+      const decimalPart = cleanedAmount.split('.')[1]
+
+      if (decimalPart && decimalPart.length > 7) {
+        setError('XLM amount cannot have more than 7 decimal places.')
         return
       }
 
       const currentBalance = Number(balance)
 
-      if (
-        Number.isFinite(currentBalance) &&
-        numericAmount >= currentBalance
-      ) {
-        setError('Insufficient XLM balance for this transaction.')
+      if (!Number.isFinite(currentBalance)) {
+        setError('Unable to read your current XLM balance.')
+        return
+      }
+
+      if (numericAmount >= currentBalance) {
+        setError(
+          'Insufficient XLM balance. Keep some XLM available for the transaction fee.'
+        )
         return
       }
 
@@ -123,7 +149,7 @@ function App() {
           Operation.payment({
             destination: cleanedRecipient,
             asset: Asset.native(),
-            amount: amount,
+            amount: cleanedAmount,
           })
         )
         .setTimeout(180)
@@ -157,7 +183,7 @@ function App() {
     } catch (err) {
       console.error(err)
       setError(
-        'Transaction failed. Please check the address and balance.'
+        'Transaction failed. Please check the recipient address and balance.'
       )
     } finally {
       setLoading(false)
@@ -350,7 +376,7 @@ function App() {
             placeholder="Amount in XLM"
             className="send-input"
             min="0"
-            step="0.01"
+            step="0.0000001"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
