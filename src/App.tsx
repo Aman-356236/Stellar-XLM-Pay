@@ -29,6 +29,7 @@ function App() {
   const [recipient, setRecipient] = useState('')
   const [amount, setAmount] = useState('')
   const [loading, setLoading] = useState(false)
+  const [connectingWallet, setConnectingWallet] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [walletCopied, setWalletCopied] = useState(false)
@@ -51,6 +52,7 @@ function App() {
       setBalance(xlmBalance ? xlmBalance.balance : '0')
     } catch (err) {
       console.error(err)
+
       setError(
         'Unable to fetch wallet balance. Please check the wallet or network.',
       )
@@ -58,13 +60,20 @@ function App() {
   }
 
   const connectWallet = async () => {
+    if (connectingWallet || loading) {
+      return
+    }
+
     try {
+      setConnectingWallet(true)
       setError('')
       setSuccess('')
       setTransactionHash('')
       setCopied(false)
       setWalletCopied(false)
-      setTransactionStatus('')
+      setTransactionStatus(
+        'Opening wallet selection...',
+      )
 
       const response = await StellarWalletsKit.authModal()
 
@@ -72,21 +81,29 @@ function App() {
         setError(
           'Wallet connection was rejected or no wallet was selected.',
         )
+        setTransactionStatus('')
         return
       }
 
       setWalletAddress(response.address)
-      setTransactionStatus('Wallet connected. Fetching balance...')
+
+      setTransactionStatus(
+        'Wallet connected. Fetching balance...',
+      )
 
       await fetchBalance(response.address)
 
       setTransactionStatus('')
-      setSuccess('Wallet connected successfully! 🎉')
+      setSuccess(
+        'Wallet connected successfully! 🎉',
+      )
     } catch (err) {
       console.error(err)
 
       const message =
-        err instanceof Error ? err.message.toLowerCase() : ''
+        err instanceof Error
+          ? err.message.toLowerCase()
+          : ''
 
       if (
         message.includes('reject') ||
@@ -110,6 +127,8 @@ function App() {
       }
 
       setTransactionStatus('')
+    } finally {
+      setConnectingWallet(false)
     }
   }
 
@@ -169,9 +188,13 @@ function App() {
         return
       }
 
-      const decimalPart = cleanedAmount.split('.')[1]
+      const decimalPart =
+        cleanedAmount.split('.')[1]
 
-      if (decimalPart && decimalPart.length > 7) {
+      if (
+        decimalPart &&
+        decimalPart.length > 7
+      ) {
         setError(
           'XLM amount cannot have more than 7 decimal places.',
         )
@@ -195,16 +218,21 @@ function App() {
       }
 
       setLoading(true)
-      setTransactionStatus('Preparing transaction...')
+      setTransactionStatus(
+        'Preparing transaction...',
+      )
 
       const account = await server.loadAccount(
         walletAddress,
       )
 
-      const transaction = new TransactionBuilder(account, {
-        fee: '100',
-        networkPassphrase: Networks.TESTNET,
-      })
+      const transaction = new TransactionBuilder(
+        account,
+        {
+          fee: '100',
+          networkPassphrase: Networks.TESTNET,
+        },
+      )
         .addOperation(
           Operation.payment({
             destination: cleanedRecipient,
@@ -242,17 +270,23 @@ function App() {
         'Submitting transaction...',
       )
 
-      const signedTx = TransactionBuilder.fromXDR(
-        signedTransaction.signedTxXdr,
-        Networks.TESTNET,
+      const signedTx =
+        TransactionBuilder.fromXDR(
+          signedTransaction.signedTxXdr,
+          Networks.TESTNET,
+        )
+
+      const result =
+        await server.submitTransaction(
+          signedTx,
+        )
+
+      setSuccess(
+        'XLM sent successfully! 🎉',
       )
 
-      const result = await server.submitTransaction(
-        signedTx,
-      )
-
-      setSuccess('XLM sent successfully! 🎉')
       setTransactionHash(result.hash)
+
       setTransactionStatus(
         'Transaction confirmed successfully!',
       )
@@ -265,7 +299,9 @@ function App() {
       console.error(err)
 
       const message =
-        err instanceof Error ? err.message.toLowerCase() : ''
+        err instanceof Error
+          ? err.message.toLowerCase()
+          : ''
 
       if (
         message.includes('reject') ||
@@ -376,6 +412,12 @@ function App() {
       )}...${walletAddress.slice(-6)}`
     : ''
 
+  const walletButtonText = connectingWallet
+    ? 'Opening Wallets...'
+    : walletAddress
+      ? 'Wallet Connected'
+      : 'Connect Stellar Wallet'
+
   return (
     <div className="app">
       <header className="navbar">
@@ -387,6 +429,7 @@ function App() {
           <button
             className="connect-btn"
             onClick={disconnectWallet}
+            disabled={loading || connectingWallet}
           >
             Disconnect Wallet
           </button>
@@ -394,8 +437,13 @@ function App() {
           <button
             className="connect-btn"
             onClick={connectWallet}
+            disabled={
+              loading || connectingWallet
+            }
           >
-            Connect Wallet
+            {connectingWallet
+              ? 'Opening Wallets...'
+              : 'Connect Wallet'}
           </button>
         )}
       </header>
@@ -414,10 +462,13 @@ function App() {
         <button
           className="primary-btn"
           onClick={connectWallet}
+          disabled={
+            loading ||
+            connectingWallet ||
+            Boolean(walletAddress)
+          }
         >
-          {walletAddress
-            ? 'Wallet Connected'
-            : 'Connect Stellar Wallet'}
+          {walletButtonText}
         </button>
 
         {walletAddress && (
@@ -467,7 +518,9 @@ function App() {
             <button
               className="refresh-btn"
               onClick={refreshWalletBalance}
-              disabled={refreshing}
+              disabled={
+                refreshing || loading
+              }
             >
               {refreshing
                 ? 'Refreshing...'
@@ -481,7 +534,10 @@ function App() {
             <span className="status-spinner">
               ⏳
             </span>
-            <span>{transactionStatus}</span>
+
+            <span>
+              {transactionStatus}
+            </span>
           </div>
         )}
 
