@@ -519,12 +519,6 @@ function App() {
           'Preparing contract transaction...',
         )
 
-        /*
-         * prepareTransaction automatically
-         * simulates and assembles the Soroban
-         * transaction.
-         */
-
         const preparedTransaction =
           await rpcServer.prepareTransaction(
             transaction,
@@ -1102,6 +1096,34 @@ function App() {
             Call a deployed smart
             contract directly from
             the frontend.
+          </p>
+        </div>
+      </section>
+
+      <section className="network-info">
+        <div className="network-info-card">
+          <h2>
+            🌐 Network Information
+          </h2>
+
+          <p>
+            <strong>Network:</strong>{' '}
+            Stellar Testnet
+          </p>
+
+          <p>
+            <strong>Smart Contract:</strong>{' '}
+            Soroban
+          </p>
+
+          <p>
+            <strong>RPC:</strong>{' '}
+            Soroban Testnet RPC
+          </p>
+
+          <p>
+            <strong>Contract Function:</strong>{' '}
+            hello
           </p>
         </div>
       </section>
