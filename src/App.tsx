@@ -481,14 +481,6 @@ function App() {
             walletAddress,
           )
 
-        /*
-         * Rust contract:
-         *
-         * pub fn hello(env: Env, to: String) -> Vec<String>
-         *
-         * The contract expects a String.
-         */
-
         const helloArgument =
           nativeToScVal(
             'Aman',
@@ -496,11 +488,6 @@ function App() {
               type: 'string',
             },
           )
-
-        /*
-         * The contract ID starts with C.
-         * Pass it directly to invokeContractFunction.
-         */
 
         const contractOperation =
           Operation.invokeContractFunction({
@@ -513,7 +500,7 @@ function App() {
             ],
           })
 
-        let transaction =
+        const transaction =
           new TransactionBuilder(
             account,
             {
@@ -529,50 +516,27 @@ function App() {
             .build()
 
         setTransactionStatus(
-          'Simulating contract call...',
-        )
-
-        const simulation =
-          await rpcServer.simulateTransaction(
-            transaction,
-          )
-
-        console.log(
-          'Contract simulation:',
-          simulation,
-        )
-
-        if (
-          rpc.Api.isSimulationError(
-            simulation,
-          )
-        ) {
-          throw new Error(
-            `Contract simulation failed: ${JSON.stringify(
-              simulation,
-            )}`,
-          )
-        }
-
-        setTransactionStatus(
           'Preparing contract transaction...',
         )
 
         /*
-         * IMPORTANT:
-         * prepareTransaction is asynchronous.
-         * The missing await was causing:
-         * "transaction.toXDR is not a function"
+         * prepareTransaction automatically
+         * simulates and assembles the Soroban
+         * transaction.
          */
 
-        transaction =
+        const preparedTransaction =
           await rpcServer.prepareTransaction(
             transaction,
-            simulation,
           )
 
+        console.log(
+          'Prepared contract transaction:',
+          preparedTransaction,
+        )
+
         const transactionXDR =
-          transaction.toXDR()
+          preparedTransaction.toXDR()
 
         setTransactionStatus(
           'Waiting for wallet approval...',
