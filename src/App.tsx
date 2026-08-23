@@ -11,6 +11,8 @@ import {
   Networks,
   Operation,
   Asset,
+  rpc,
+  nativeToScVal,
 } from '@stellar/stellar-sdk'
 import './App.css'
 
@@ -18,38 +20,90 @@ StellarWalletsKit.init({
   modules: defaultModules(),
 })
 
-StellarWalletsKit.setNetwork(Networks.TESTNET)
+StellarWalletsKit.setNetwork(
+  Networks.TESTNET,
+)
+
+const CONTRACT_ID =
+  'CBHIDPEYSZ2M6CHXD2JTYT4ZNFAXWBYDCO6E2JDHSN4OH65QCZS5BR5R'
+
+const RPC_URL =
+  'https://soroban-testnet.stellar.org'
 
 function App() {
-  const [walletAddress, setWalletAddress] = useState('')
-  const [balance, setBalance] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [transactionHash, setTransactionHash] = useState('')
-  const [recipient, setRecipient] = useState('')
-  const [amount, setAmount] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [connectingWallet, setConnectingWallet] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [walletCopied, setWalletCopied] = useState(false)
-  const [transactionStatus, setTransactionStatus] = useState('')
+  const [walletAddress, setWalletAddress] =
+    useState('')
+
+  const [balance, setBalance] =
+    useState('')
+
+  const [error, setError] =
+    useState('')
+
+  const [success, setSuccess] =
+    useState('')
+
+  const [transactionHash, setTransactionHash] =
+    useState('')
+
+  const [recipient, setRecipient] =
+    useState('')
+
+  const [amount, setAmount] =
+    useState('')
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const [connectingWallet, setConnectingWallet] =
+    useState(false)
+
+  const [refreshing, setRefreshing] =
+    useState(false)
+
+  const [copied, setCopied] =
+    useState(false)
+
+  const [walletCopied, setWalletCopied] =
+    useState(false)
+
+  const [transactionStatus, setTransactionStatus] =
+    useState('')
+
+  const [contractMessage, setContractMessage] =
+    useState('')
+
+  const [contractLoading, setContractLoading] =
+    useState(false)
 
   const server = new Horizon.Server(
     'https://horizon-testnet.stellar.org',
   )
 
-  const fetchBalance = async (address: string) => {
+  const rpcServer = new rpc.Server(
+    RPC_URL,
+  )
+
+  const fetchBalance = async (
+    address: string,
+  ) => {
     try {
       setError('')
 
-      const account = await server.loadAccount(address)
+      const account =
+        await server.loadAccount(address)
 
-      const xlmBalance = account.balances.find(
-        (item) => item.asset_type === 'native',
+      const xlmBalance =
+        account.balances.find(
+          (item) =>
+            item.asset_type === 'native',
+        )
+
+      setBalance(
+        xlmBalance
+          ? xlmBalance.balance
+          : '0',
       )
-
-      setBalance(xlmBalance ? xlmBalance.balance : '0')
     } catch (err) {
       console.error(err)
 
@@ -60,40 +114,53 @@ function App() {
   }
 
   const connectWallet = async () => {
-    if (connectingWallet || loading) {
+    if (
+      connectingWallet ||
+      loading
+    ) {
       return
     }
 
     try {
       setConnectingWallet(true)
+
       setError('')
       setSuccess('')
       setTransactionHash('')
       setCopied(false)
       setWalletCopied(false)
+
       setTransactionStatus(
         'Opening wallet selection...',
       )
 
-      const response = await StellarWalletsKit.authModal()
+      const response =
+        await StellarWalletsKit.authModal()
 
       if (!response?.address) {
         setError(
           'Wallet connection was rejected or no wallet was selected.',
         )
+
         setTransactionStatus('')
+
         return
       }
 
-      setWalletAddress(response.address)
+      setWalletAddress(
+        response.address,
+      )
 
       setTransactionStatus(
         'Wallet connected. Fetching balance...',
       )
 
-      await fetchBalance(response.address)
+      await fetchBalance(
+        response.address,
+      )
 
       setTransactionStatus('')
+
       setSuccess(
         'Wallet connected successfully! 🎉',
       )
@@ -141,14 +208,21 @@ function App() {
       setTransactionStatus('')
 
       if (!walletAddress) {
-        setError('Please connect your wallet first.')
+        setError(
+          'Please connect your wallet first.',
+        )
+
         return
       }
 
-      const cleanedRecipient = recipient.trim()
+      const cleanedRecipient =
+        recipient.trim()
 
       if (!cleanedRecipient) {
-        setError('Please enter a recipient address.')
+        setError(
+          'Please enter a recipient address.',
+        )
+
         return
       }
 
@@ -159,32 +233,45 @@ function App() {
         setError(
           'Please enter a valid Stellar recipient address.',
         )
+
         return
       }
 
-      if (cleanedRecipient === walletAddress) {
+      if (
+        cleanedRecipient ===
+        walletAddress
+      ) {
         setError(
           'You cannot send XLM to your own wallet.',
         )
+
         return
       }
 
-      const cleanedAmount = amount.trim()
+      const cleanedAmount =
+        amount.trim()
 
       if (!cleanedAmount) {
-        setError('Please enter an XLM amount.')
+        setError(
+          'Please enter an XLM amount.',
+        )
+
         return
       }
 
-      const numericAmount = Number(cleanedAmount)
+      const numericAmount =
+        Number(cleanedAmount)
 
       if (
-        !Number.isFinite(numericAmount) ||
+        !Number.isFinite(
+          numericAmount,
+        ) ||
         numericAmount <= 0
       ) {
         setError(
           'Please enter a valid XLM amount greater than 0.',
         )
+
         return
       }
 
@@ -198,52 +285,71 @@ function App() {
         setError(
           'XLM amount cannot have more than 7 decimal places.',
         )
+
         return
       }
 
-      const currentBalance = Number(balance)
+      const currentBalance =
+        Number(balance)
 
-      if (!Number.isFinite(currentBalance)) {
+      if (
+        !Number.isFinite(
+          currentBalance,
+        )
+      ) {
         setError(
           'Unable to read your current XLM balance.',
         )
+
         return
       }
 
-      if (numericAmount >= currentBalance) {
+      if (
+        numericAmount >=
+        currentBalance
+      ) {
         setError(
           'Insufficient XLM balance. Keep some XLM available for the transaction fee.',
         )
+
         return
       }
 
       setLoading(true)
+
       setTransactionStatus(
         'Preparing transaction...',
       )
 
-      const account = await server.loadAccount(
-        walletAddress,
-      )
-
-      const transaction = new TransactionBuilder(
-        account,
-        {
-          fee: '100',
-          networkPassphrase: Networks.TESTNET,
-        },
-      )
-        .addOperation(
-          Operation.payment({
-            destination: cleanedRecipient,
-            asset: Asset.native(),
-            amount: cleanedAmount,
-          }),
+      const account =
+        await server.loadAccount(
+          walletAddress,
         )
-        .setTimeout(180)
-        .build()
 
-      const transactionXDR = transaction.toXDR()
+      const transaction =
+        new TransactionBuilder(
+          account,
+          {
+            fee: '100',
+            networkPassphrase:
+              Networks.TESTNET,
+          },
+        )
+          .addOperation(
+            Operation.payment({
+              destination:
+                cleanedRecipient,
+              asset:
+                Asset.native(),
+              amount:
+                cleanedAmount,
+            }),
+          )
+          .setTimeout(180)
+          .build()
+
+      const transactionXDR =
+        transaction.toXDR()
 
       setTransactionStatus(
         'Waiting for wallet approval...',
@@ -253,16 +359,22 @@ function App() {
         await StellarWalletsKit.signTransaction(
           transactionXDR,
           {
-            networkPassphrase: Networks.TESTNET,
-            address: walletAddress,
+            networkPassphrase:
+              Networks.TESTNET,
+            address:
+              walletAddress,
           },
         )
 
-      if (!signedTransaction?.signedTxXdr) {
+      if (
+        !signedTransaction?.signedTxXdr
+      ) {
         setError(
           'Transaction signing was rejected or failed.',
         )
+
         setTransactionStatus('')
+
         return
       }
 
@@ -285,7 +397,9 @@ function App() {
         'XLM sent successfully! 🎉',
       )
 
-      setTransactionHash(result.hash)
+      setTransactionHash(
+        result.hash,
+      )
 
       setTransactionStatus(
         'Transaction confirmed successfully!',
@@ -294,7 +408,9 @@ function App() {
       setRecipient('')
       setAmount('')
 
-      await fetchBalance(walletAddress)
+      await fetchBalance(
+        walletAddress,
+      )
     } catch (err) {
       console.error(err)
 
@@ -337,86 +453,359 @@ function App() {
     }
   }
 
-  const copyTransactionHash = async () => {
-    if (!transactionHash) return
-
-    try {
-      await navigator.clipboard.writeText(
-        transactionHash,
-      )
-
-      setCopied(true)
-
-      setTimeout(() => {
+  const callHelloContract =
+    async () => {
+      try {
+        setError('')
+        setSuccess('')
+        setContractMessage('')
+        setTransactionHash('')
         setCopied(false)
-      }, 2000)
-    } catch (err) {
-      console.error(err)
-      setError('Failed to copy transaction hash.')
+
+        if (!walletAddress) {
+          setError(
+            'Please connect your wallet first.',
+          )
+
+          return
+        }
+
+        setContractLoading(true)
+
+        setTransactionStatus(
+          'Preparing smart contract call...',
+        )
+
+        const account =
+          await server.loadAccount(
+            walletAddress,
+          )
+
+        /*
+         * Rust contract:
+         *
+         * pub fn hello(env: Env, to: String) -> Vec<String>
+         *
+         * The contract expects a String.
+         */
+
+        const helloArgument =
+          nativeToScVal(
+            'Aman',
+            {
+              type: 'string',
+            },
+          )
+
+        /*
+         * The contract ID starts with C.
+         * Pass it directly to invokeContractFunction.
+         */
+
+        const contractOperation =
+          Operation.invokeContractFunction({
+            contract:
+              CONTRACT_ID,
+            function:
+              'hello',
+            args: [
+              helloArgument,
+            ],
+          })
+
+        let transaction =
+          new TransactionBuilder(
+            account,
+            {
+              fee: '100',
+              networkPassphrase:
+                Networks.TESTNET,
+            },
+          )
+            .addOperation(
+              contractOperation,
+            )
+            .setTimeout(180)
+            .build()
+
+        setTransactionStatus(
+          'Simulating contract call...',
+        )
+
+        const simulation =
+          await rpcServer.simulateTransaction(
+            transaction,
+          )
+
+        console.log(
+          'Contract simulation:',
+          simulation,
+        )
+
+        if (
+          rpc.Api.isSimulationError(
+            simulation,
+          )
+        ) {
+          throw new Error(
+            `Contract simulation failed: ${JSON.stringify(
+              simulation,
+            )}`,
+          )
+        }
+
+        setTransactionStatus(
+          'Preparing contract transaction...',
+        )
+
+        /*
+         * IMPORTANT:
+         * prepareTransaction is asynchronous.
+         * The missing await was causing:
+         * "transaction.toXDR is not a function"
+         */
+
+        transaction =
+          await rpcServer.prepareTransaction(
+            transaction,
+            simulation,
+          )
+
+        const transactionXDR =
+          transaction.toXDR()
+
+        setTransactionStatus(
+          'Waiting for wallet approval...',
+        )
+
+        const signedTransaction =
+          await StellarWalletsKit.signTransaction(
+            transactionXDR,
+            {
+              networkPassphrase:
+                Networks.TESTNET,
+              address:
+                walletAddress,
+            },
+          )
+
+        if (
+          !signedTransaction?.signedTxXdr
+        ) {
+          throw new Error(
+            'Smart contract transaction signing was rejected.',
+          )
+        }
+
+        setTransactionStatus(
+          'Submitting smart contract transaction...',
+        )
+
+        const signedTx =
+          TransactionBuilder.fromXDR(
+            signedTransaction.signedTxXdr,
+            Networks.TESTNET,
+          )
+
+        const sendResponse =
+          await rpcServer.sendTransaction(
+            signedTx,
+          )
+
+        console.log(
+          'Contract transaction response:',
+          sendResponse,
+        )
+
+        if (
+          sendResponse.status ===
+          'ERROR'
+        ) {
+          throw new Error(
+            `Smart contract transaction rejected: ${JSON.stringify(
+              sendResponse,
+            )}`,
+          )
+        }
+
+        setTransactionStatus(
+          'Waiting for contract confirmation...',
+        )
+
+        let getResponse =
+          await rpcServer.getTransaction(
+            sendResponse.hash,
+          )
+
+        while (
+          getResponse.status ===
+          'NOT_FOUND'
+        ) {
+          await new Promise(
+            (resolve) =>
+              setTimeout(
+                resolve,
+                2000,
+              ),
+          )
+
+          getResponse =
+            await rpcServer.getTransaction(
+              sendResponse.hash,
+            )
+        }
+
+        console.log(
+          'Contract result:',
+          getResponse,
+        )
+
+        if (
+          getResponse.status !==
+          'SUCCESS'
+        ) {
+          throw new Error(
+            `Smart contract transaction failed: ${JSON.stringify(
+              getResponse,
+            )}`,
+          )
+        }
+
+        setContractMessage(
+          'Hello, Aman',
+        )
+
+        setTransactionHash(
+          sendResponse.hash,
+        )
+
+        setSuccess(
+          'Smart contract called successfully! 🎉',
+        )
+
+        setTransactionStatus(
+          'Contract transaction confirmed successfully!',
+        )
+      } catch (err) {
+        console.error(
+          'SMART CONTRACT ERROR:',
+          err,
+        )
+
+        const message =
+          err instanceof Error
+            ? err.message
+            : String(err)
+
+        setError(
+          `Smart contract error: ${message}`,
+        )
+
+        setTransactionStatus('')
+      } finally {
+        setContractLoading(false)
+      }
     }
-  }
 
-  const copyWalletAddress = async () => {
-    if (!walletAddress) return
+  const copyTransactionHash =
+    async () => {
+      if (!transactionHash)
+        return
 
-    try {
-      await navigator.clipboard.writeText(
-        walletAddress,
-      )
+      try {
+        await navigator.clipboard.writeText(
+          transactionHash,
+        )
 
-      setWalletCopied(true)
+        setCopied(true)
 
-      setTimeout(() => {
-        setWalletCopied(false)
-      }, 2000)
-    } catch (err) {
-      console.error(err)
-      setError('Failed to copy wallet address.')
-    }
-  }
+        setTimeout(() => {
+          setCopied(false)
+        }, 2000)
+      } catch (err) {
+        console.error(err)
 
-  const refreshWalletBalance = async () => {
-    if (!walletAddress) return
-
-    try {
-      setRefreshing(true)
-      await fetchBalance(walletAddress)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  const disconnectWallet = async () => {
-    try {
-      await StellarWalletsKit.disconnect()
-    } catch (err) {
-      console.error(err)
+        setError(
+          'Failed to copy transaction hash.',
+        )
+      }
     }
 
-    setWalletAddress('')
-    setBalance('')
-    setError('')
-    setSuccess('')
-    setTransactionHash('')
-    setRecipient('')
-    setAmount('')
-    setCopied(false)
-    setWalletCopied(false)
-    setTransactionStatus('')
-  }
+  const copyWalletAddress =
+    async () => {
+      if (!walletAddress)
+        return
 
-  const shortWalletAddress = walletAddress
-    ? `${walletAddress.slice(
-        0,
-        6,
-      )}...${walletAddress.slice(-6)}`
-    : ''
+      try {
+        await navigator.clipboard.writeText(
+          walletAddress,
+        )
 
-  const walletButtonText = connectingWallet
-    ? 'Opening Wallets...'
-    : walletAddress
-      ? 'Wallet Connected'
-      : 'Connect Stellar Wallet'
+        setWalletCopied(true)
+
+        setTimeout(() => {
+          setWalletCopied(false)
+        }, 2000)
+      } catch (err) {
+        console.error(err)
+
+        setError(
+          'Failed to copy wallet address.',
+        )
+      }
+    }
+
+  const refreshWalletBalance =
+    async () => {
+      if (!walletAddress)
+        return
+
+      try {
+        setRefreshing(true)
+
+        await fetchBalance(
+          walletAddress,
+        )
+      } finally {
+        setRefreshing(false)
+      }
+    }
+
+  const disconnectWallet =
+    async () => {
+      try {
+        await StellarWalletsKit.disconnect()
+      } catch (err) {
+        console.error(err)
+      }
+
+      setWalletAddress('')
+      setBalance('')
+      setError('')
+      setSuccess('')
+      setTransactionHash('')
+      setRecipient('')
+      setAmount('')
+      setCopied(false)
+      setWalletCopied(false)
+      setTransactionStatus('')
+      setContractMessage('')
+    }
+
+  const shortWalletAddress =
+    walletAddress
+      ? `${walletAddress.slice(
+          0,
+          6,
+        )}...${walletAddress.slice(-6)}`
+      : ''
+
+  const walletButtonText =
+    connectingWallet
+      ? 'Opening Wallets...'
+      : walletAddress
+        ? 'Wallet Connected'
+        : 'Connect Stellar Wallet'
 
   return (
     <div className="app">
@@ -428,17 +817,26 @@ function App() {
         {walletAddress ? (
           <button
             className="connect-btn"
-            onClick={disconnectWallet}
-            disabled={loading || connectingWallet}
+            onClick={
+              disconnectWallet
+            }
+            disabled={
+              loading ||
+              connectingWallet ||
+              contractLoading
+            }
           >
             Disconnect Wallet
           </button>
         ) : (
           <button
             className="connect-btn"
-            onClick={connectWallet}
+            onClick={
+              connectWallet
+            }
             disabled={
-              loading || connectingWallet
+              loading ||
+              connectingWallet
             }
           >
             {connectingWallet
@@ -454,14 +852,17 @@ function App() {
         </h1>
 
         <p className="subtitle">
-          A simple Stellar payment app to connect
-          your wallet, check your XLM balance, and
-          send XLM on the Stellar Testnet.
+          A Stellar payment app with
+          multi-wallet support and
+          Soroban smart contract
+          integration on Testnet.
         </p>
 
         <button
           className="primary-btn"
-          onClick={connectWallet}
+          onClick={
+            connectWallet
+          }
           disabled={
             loading ||
             connectingWallet ||
@@ -474,7 +875,9 @@ function App() {
         {walletAddress && (
           <div className="wallet-address">
             <div className="wallet-label">
-              <span>Connected Wallet</span>
+              <span>
+                Connected Wallet
+              </span>
             </div>
 
             <div className="wallet-display">
@@ -485,7 +888,9 @@ function App() {
               <button
                 type="button"
                 className="wallet-copy-btn"
-                onClick={copyWalletAddress}
+                onClick={
+                  copyWalletAddress
+                }
               >
                 {walletCopied
                   ? '✓ Copied!'
@@ -494,7 +899,8 @@ function App() {
             </div>
 
             <p className="balance-network">
-              Connected using Stellar Wallets Kit
+              Connected using Stellar
+              Wallets Kit
             </p>
           </div>
         )}
@@ -503,12 +909,21 @@ function App() {
           <div className="balance-card">
             <div className="balance-header">
               <span>💰</span>
-              <span>XLM Balance</span>
+
+              <span>
+                XLM Balance
+              </span>
             </div>
 
             <div className="balance-amount">
-              {Number(balance).toFixed(2)}
-              <span> XLM</span>
+              {Number(
+                balance,
+              ).toFixed(2)}
+
+              <span>
+                {' '}
+                XLM
+              </span>
             </div>
 
             <p className="balance-network">
@@ -517,9 +932,13 @@ function App() {
 
             <button
               className="refresh-btn"
-              onClick={refreshWalletBalance}
+              onClick={
+                refreshWalletBalance
+              }
               disabled={
-                refreshing || loading
+                refreshing ||
+                loading ||
+                contractLoading
               }
             >
               {refreshing
@@ -529,17 +948,59 @@ function App() {
           </div>
         )}
 
-        {transactionStatus && !success && (
-          <div className="transaction-status">
-            <span className="status-spinner">
-              ⏳
-            </span>
+        {walletAddress && (
+          <div className="contract-card">
+            <h2>
+              Smart Contract
+            </h2>
 
-            <span>
-              {transactionStatus}
-            </span>
+            <p>
+              Call the deployed Soroban
+              Hello contract from your
+              connected wallet.
+            </p>
+
+            <button
+              className="send-btn"
+              onClick={
+                callHelloContract
+              }
+              disabled={
+                contractLoading ||
+                loading
+              }
+            >
+              {contractLoading
+                ? 'Calling Contract...'
+                : 'Call Hello Contract'}
+            </button>
+
+            {contractMessage && (
+              <p className="transaction-confirmed">
+                ✓ {contractMessage}
+              </p>
+            )}
+
+            <p className="balance-network">
+              Contract:
+              <br />
+              {CONTRACT_ID}
+            </p>
           </div>
         )}
+
+        {transactionStatus &&
+          !success && (
+            <div className="transaction-status">
+              <span className="status-spinner">
+                ⏳
+              </span>
+
+              <span>
+                {transactionStatus}
+              </span>
+            </div>
+          )}
 
         {success && (
           <div className="success-message">
@@ -547,7 +1008,8 @@ function App() {
 
             {transactionStatus && (
               <p className="transaction-confirmed">
-                ✓ {transactionStatus}
+                ✓{' '}
+                {transactionStatus}
               </p>
             )}
 
@@ -564,7 +1026,9 @@ function App() {
                 <button
                   type="button"
                   className="copy-btn"
-                  onClick={copyTransactionHash}
+                  onClick={
+                    copyTransactionHash
+                  }
                 >
                   {copied
                     ? '✓ Copied!'
@@ -584,7 +1048,9 @@ function App() {
 
       {walletAddress && (
         <section className="send-section">
-          <h2>Send XLM</h2>
+          <h2>
+            Send XLM
+          </h2>
 
           <input
             type="text"
@@ -592,7 +1058,9 @@ function App() {
             className="send-input"
             value={recipient}
             onChange={(e) =>
-              setRecipient(e.target.value)
+              setRecipient(
+                e.target.value,
+              )
             }
             disabled={loading}
           />
@@ -605,14 +1073,18 @@ function App() {
             step="0.0000001"
             value={amount}
             onChange={(e) =>
-              setAmount(e.target.value)
+              setAmount(
+                e.target.value,
+              )
             }
             disabled={loading}
           />
 
           <button
             className="send-btn"
-            onClick={sendXLM}
+            onClick={
+              sendXLM
+            }
             disabled={loading}
           >
             {loading
@@ -624,26 +1096,48 @@ function App() {
 
       <section className="features">
         <div className="feature-card">
-          <h2>👛 Multi-Wallet</h2>
+          <h2>
+            👛 Multi-Wallet
+          </h2>
+
           <p>
-            Connect supported Stellar wallets
-            through Stellar Wallets Kit.
+            Connect supported Stellar
+            wallets through Stellar
+            Wallets Kit.
           </p>
         </div>
 
         <div className="feature-card">
-          <h2>💰 XLM Balance</h2>
+          <h2>
+            💰 XLM Balance
+          </h2>
+
           <p>
-            View your current Stellar Testnet
-            balance.
+            View your current Stellar
+            Testnet balance.
           </p>
         </div>
 
         <div className="feature-card">
-          <h2>🚀 Send XLM</h2>
+          <h2>
+            🚀 Send XLM
+          </h2>
+
           <p>
-            Send XLM transactions on the Stellar
-            Testnet.
+            Send XLM transactions on
+            the Stellar Testnet.
+          </p>
+        </div>
+
+        <div className="feature-card">
+          <h2>
+            📜 Soroban Contract
+          </h2>
+
+          <p>
+            Call a deployed smart
+            contract directly from
+            the frontend.
           </p>
         </div>
       </section>
