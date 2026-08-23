@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { requestAccess, signTransaction } from '@stellar/freighter-api'
+import {
+  StellarWalletsKit,
+} from '@creit.tech/stellar-wallets-kit/sdk'
+import {
+  defaultModules,
+} from '@creit.tech/stellar-wallets-kit/modules/utils'
 import {
   Horizon,
   TransactionBuilder,
@@ -8,6 +13,12 @@ import {
   Asset,
 } from '@stellar/stellar-sdk'
 import './App.css'
+
+StellarWalletsKit.init({
+  modules: defaultModules(),
+})
+
+StellarWalletsKit.setNetwork(Networks.TESTNET)
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('')
@@ -24,7 +35,7 @@ function App() {
   const [transactionStatus, setTransactionStatus] = useState('')
 
   const server = new Horizon.Server(
-    'https://horizon-testnet.stellar.org'
+    'https://horizon-testnet.stellar.org',
   )
 
   const fetchBalance = async (address: string) => {
@@ -34,13 +45,15 @@ function App() {
       const account = await server.loadAccount(address)
 
       const xlmBalance = account.balances.find(
-        (item) => item.asset_type === 'native'
+        (item) => item.asset_type === 'native',
       )
 
       setBalance(xlmBalance ? xlmBalance.balance : '0')
     } catch (err) {
       console.error(err)
-      setError('Failed to fetch XLM balance.')
+      setError(
+        'Unable to fetch wallet balance. Please check the wallet or network.',
+      )
     }
   }
 
@@ -53,19 +66,50 @@ function App() {
       setWalletCopied(false)
       setTransactionStatus('')
 
-      const response = await requestAccess()
+      const response = await StellarWalletsKit.authModal()
 
-      if (response.error) {
-        setError(response.error.message)
+      if (!response?.address) {
+        setError(
+          'Wallet connection was rejected or no wallet was selected.',
+        )
         return
       }
 
       setWalletAddress(response.address)
+      setTransactionStatus('Wallet connected. Fetching balance...')
 
       await fetchBalance(response.address)
+
+      setTransactionStatus('')
+      setSuccess('Wallet connected successfully! 🎉')
     } catch (err) {
       console.error(err)
-      setError('Failed to connect wallet or fetch XLM balance.')
+
+      const message =
+        err instanceof Error ? err.message.toLowerCase() : ''
+
+      if (
+        message.includes('reject') ||
+        message.includes('denied') ||
+        message.includes('cancel')
+      ) {
+        setError(
+          'Wallet connection was rejected. Please approve the connection.',
+        )
+      } else if (
+        message.includes('not found') ||
+        message.includes('unavailable')
+      ) {
+        setError(
+          'No compatible Stellar wallet was found. Please install or open a supported wallet.',
+        )
+      } else {
+        setError(
+          'Failed to connect wallet. Please try again.',
+        )
+      }
+
+      setTransactionStatus('')
     }
   }
 
@@ -93,12 +137,16 @@ function App() {
         !cleanedRecipient.startsWith('G') ||
         cleanedRecipient.length !== 56
       ) {
-        setError('Please enter a valid Stellar recipient address.')
+        setError(
+          'Please enter a valid Stellar recipient address.',
+        )
         return
       }
 
       if (cleanedRecipient === walletAddress) {
-        setError('You cannot send XLM to your own wallet.')
+        setError(
+          'You cannot send XLM to your own wallet.',
+        )
         return
       }
 
@@ -115,27 +163,33 @@ function App() {
         !Number.isFinite(numericAmount) ||
         numericAmount <= 0
       ) {
-        setError('Please enter a valid XLM amount greater than 0.')
+        setError(
+          'Please enter a valid XLM amount greater than 0.',
+        )
         return
       }
 
       const decimalPart = cleanedAmount.split('.')[1]
 
       if (decimalPart && decimalPart.length > 7) {
-        setError('XLM amount cannot have more than 7 decimal places.')
+        setError(
+          'XLM amount cannot have more than 7 decimal places.',
+        )
         return
       }
 
       const currentBalance = Number(balance)
 
       if (!Number.isFinite(currentBalance)) {
-        setError('Unable to read your current XLM balance.')
+        setError(
+          'Unable to read your current XLM balance.',
+        )
         return
       }
 
       if (numericAmount >= currentBalance) {
         setError(
-          'Insufficient XLM balance. Keep some XLM available for the transaction fee.'
+          'Insufficient XLM balance. Keep some XLM available for the transaction fee.',
         )
         return
       }
@@ -143,7 +197,9 @@ function App() {
       setLoading(true)
       setTransactionStatus('Preparing transaction...')
 
-      const account = await server.loadAccount(walletAddress)
+      const account = await server.loadAccount(
+        walletAddress,
+      )
 
       const transaction = new TransactionBuilder(account, {
         fee: '100',
@@ -154,37 +210,52 @@ function App() {
             destination: cleanedRecipient,
             asset: Asset.native(),
             amount: cleanedAmount,
-          })
+          }),
         )
         .setTimeout(180)
         .build()
 
       const transactionXDR = transaction.toXDR()
 
-      setTransactionStatus('Waiting for Freighter approval...')
+      setTransactionStatus(
+        'Waiting for wallet approval...',
+      )
 
-      const signedTransaction = await signTransaction(transactionXDR, {
-        networkPassphrase: Networks.TESTNET,
-      })
+      const signedTransaction =
+        await StellarWalletsKit.signTransaction(
+          transactionXDR,
+          {
+            networkPassphrase: Networks.TESTNET,
+            address: walletAddress,
+          },
+        )
 
-      if (signedTransaction.error) {
-        setError(signedTransaction.error.message)
+      if (!signedTransaction?.signedTxXdr) {
+        setError(
+          'Transaction signing was rejected or failed.',
+        )
         setTransactionStatus('')
         return
       }
 
-      setTransactionStatus('Submitting transaction...')
+      setTransactionStatus(
+        'Submitting transaction...',
+      )
 
       const signedTx = TransactionBuilder.fromXDR(
         signedTransaction.signedTxXdr,
-        Networks.TESTNET
+        Networks.TESTNET,
       )
 
-      const result = await server.submitTransaction(signedTx)
+      const result = await server.submitTransaction(
+        signedTx,
+      )
 
       setSuccess('XLM sent successfully! 🎉')
       setTransactionHash(result.hash)
-      setTransactionStatus('Transaction confirmed!')
+      setTransactionStatus(
+        'Transaction confirmed successfully!',
+      )
 
       setRecipient('')
       setAmount('')
@@ -192,10 +263,39 @@ function App() {
       await fetchBalance(walletAddress)
     } catch (err) {
       console.error(err)
+
+      const message =
+        err instanceof Error ? err.message.toLowerCase() : ''
+
+      if (
+        message.includes('reject') ||
+        message.includes('denied') ||
+        message.includes('cancel')
+      ) {
+        setError(
+          'Transaction was rejected by the wallet.',
+        )
+      } else if (
+        message.includes('insufficient') ||
+        message.includes('balance')
+      ) {
+        setError(
+          'Insufficient XLM balance for this transaction.',
+        )
+      } else if (
+        message.includes('not found') ||
+        message.includes('wallet')
+      ) {
+        setError(
+          'Wallet not found or unavailable. Please reconnect your wallet.',
+        )
+      } else {
+        setError(
+          'Transaction failed. Please check the recipient address and balance.',
+        )
+      }
+
       setTransactionStatus('')
-      setError(
-        'Transaction failed. Please check the recipient address and balance.'
-      )
     } finally {
       setLoading(false)
     }
@@ -205,7 +305,10 @@ function App() {
     if (!transactionHash) return
 
     try {
-      await navigator.clipboard.writeText(transactionHash)
+      await navigator.clipboard.writeText(
+        transactionHash,
+      )
+
       setCopied(true)
 
       setTimeout(() => {
@@ -221,7 +324,10 @@ function App() {
     if (!walletAddress) return
 
     try {
-      await navigator.clipboard.writeText(walletAddress)
+      await navigator.clipboard.writeText(
+        walletAddress,
+      )
+
       setWalletCopied(true)
 
       setTimeout(() => {
@@ -244,7 +350,13 @@ function App() {
     }
   }
 
-  const disconnectWallet = () => {
+  const disconnectWallet = async () => {
+    try {
+      await StellarWalletsKit.disconnect()
+    } catch (err) {
+      console.error(err)
+    }
+
     setWalletAddress('')
     setBalance('')
     setError('')
@@ -258,37 +370,54 @@ function App() {
   }
 
   const shortWalletAddress = walletAddress
-    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-6)}`
+    ? `${walletAddress.slice(
+        0,
+        6,
+      )}...${walletAddress.slice(-6)}`
     : ''
 
   return (
     <div className="app">
       <header className="navbar">
-        <div className="logo">Stellar XLM Pay</div>
+        <div className="logo">
+          Stellar XLM Pay
+        </div>
 
         {walletAddress ? (
-          <button className="connect-btn" onClick={disconnectWallet}>
+          <button
+            className="connect-btn"
+            onClick={disconnectWallet}
+          >
             Disconnect Wallet
           </button>
         ) : (
-          <button className="connect-btn" onClick={connectWallet}>
+          <button
+            className="connect-btn"
+            onClick={connectWallet}
+          >
             Connect Wallet
           </button>
         )}
       </header>
 
       <main className="hero-section">
-        <h1>Send XLM. Fast. Simple. Secure.</h1>
+        <h1>
+          Send XLM. Fast. Simple. Secure.
+        </h1>
 
         <p className="subtitle">
-          A simple Stellar payment app to connect your wallet,
-          check your XLM balance, and send XLM on the Stellar Testnet.
+          A simple Stellar payment app to connect
+          your wallet, check your XLM balance, and
+          send XLM on the Stellar Testnet.
         </p>
 
-        <button className="primary-btn" onClick={connectWallet}>
+        <button
+          className="primary-btn"
+          onClick={connectWallet}
+        >
           {walletAddress
             ? 'Wallet Connected'
-            : 'Connect Freighter Wallet'}
+            : 'Connect Stellar Wallet'}
         </button>
 
         {walletAddress && (
@@ -307,9 +436,15 @@ function App() {
                 className="wallet-copy-btn"
                 onClick={copyWalletAddress}
               >
-                {walletCopied ? '✓ Copied!' : '📋 Copy'}
+                {walletCopied
+                  ? '✓ Copied!'
+                  : '📋 Copy'}
               </button>
             </div>
+
+            <p className="balance-network">
+              Connected using Stellar Wallets Kit
+            </p>
           </div>
         )}
 
@@ -321,7 +456,8 @@ function App() {
             </div>
 
             <div className="balance-amount">
-              {Number(balance).toFixed(2)} <span>XLM</span>
+              {Number(balance).toFixed(2)}
+              <span> XLM</span>
             </div>
 
             <p className="balance-network">
@@ -333,14 +469,18 @@ function App() {
               onClick={refreshWalletBalance}
               disabled={refreshing}
             >
-              {refreshing ? 'Refreshing...' : 'Refresh Balance'}
+              {refreshing
+                ? 'Refreshing...'
+                : 'Refresh Balance'}
             </button>
           </div>
         )}
 
         {transactionStatus && !success && (
           <div className="transaction-status">
-            <span className="status-spinner">⏳</span>
+            <span className="status-spinner">
+              ⏳
+            </span>
             <span>{transactionStatus}</span>
           </div>
         )}
@@ -370,7 +510,9 @@ function App() {
                   className="copy-btn"
                   onClick={copyTransactionHash}
                 >
-                  {copied ? '✓ Copied!' : '📋 Copy Hash'}
+                  {copied
+                    ? '✓ Copied!'
+                    : '📋 Copy Hash'}
                 </button>
               </div>
             )}
@@ -393,7 +535,9 @@ function App() {
             placeholder="Recipient Stellar Address"
             className="send-input"
             value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
+            onChange={(e) =>
+              setRecipient(e.target.value)
+            }
             disabled={loading}
           />
 
@@ -404,7 +548,9 @@ function App() {
             min="0"
             step="0.0000001"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) =>
+              setAmount(e.target.value)
+            }
             disabled={loading}
           />
 
@@ -413,25 +559,36 @@ function App() {
             onClick={sendXLM}
             disabled={loading}
           >
-            {loading ? 'Processing Transaction...' : 'Send XLM'}
+            {loading
+              ? 'Processing Transaction...'
+              : 'Send XLM'}
           </button>
         </section>
       )}
 
       <section className="features">
         <div className="feature-card">
-          <h2>💳 Wallet</h2>
-          <p>Connect your Freighter wallet securely.</p>
+          <h2>👛 Multi-Wallet</h2>
+          <p>
+            Connect supported Stellar wallets
+            through Stellar Wallets Kit.
+          </p>
         </div>
 
         <div className="feature-card">
           <h2>💰 XLM Balance</h2>
-          <p>View your current Stellar Testnet balance.</p>
+          <p>
+            View your current Stellar Testnet
+            balance.
+          </p>
         </div>
 
         <div className="feature-card">
           <h2>🚀 Send XLM</h2>
-          <p>Send XLM transactions on the Stellar Testnet.</p>
+          <p>
+            Send XLM transactions on the Stellar
+            Testnet.
+          </p>
         </div>
       </section>
     </div>
