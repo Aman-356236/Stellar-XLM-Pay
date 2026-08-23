@@ -2,29 +2,45 @@
 
 ### A simple, fast and secure Stellar Testnet payment dApp.
 
-Stellar XLM Pay is a decentralized payment application that allows users to connect their **Freighter wallet**, check their **XLM balance**, and send **XLM transactions** securely on the **Stellar Testnet**.
+Stellar XLM Pay is a decentralized payment application that allows users to connect a supported **Stellar wallet**, check their **XLM balance**, send **XLM transactions**, and interact with a deployed **Soroban smart contract** securely on the **Stellar Testnet**.
 
 ---
 
 ## ✨ Features
 
-- 🔐 **Freighter Wallet Connection**
-  - Connect and disconnect your Stellar wallet securely.
+- 🔐 **Stellar Wallet Connection**
+  - Connect supported Stellar wallets through **Stellar Wallets Kit**.
+  - Approve wallet connections securely.
+  - Disconnect the connected wallet.
 
 - 💰 **XLM Balance**
-  - View your current Stellar Testnet XLM balance.
+  - View the current Stellar Testnet XLM balance.
+  - Balance is fetched directly from the Stellar Testnet.
 
 - 🔄 **Refresh Balance**
-  - Refresh your wallet balance after transactions.
+  - Refresh the wallet balance after transactions.
 
 - 🚀 **Send XLM**
   - Send XLM to another Stellar Testnet address.
+  - Validate recipient addresses and XLM amounts before submitting.
 
-- 🦊 **Freighter Transaction Signing**
-  - Transactions are securely signed through Freighter.
+- 🦊 **Wallet Transaction Signing**
+  - Transactions are securely signed through the connected Stellar wallet.
 
 - ✅ **Transaction Confirmation**
-  - Display transaction success status and transaction hash.
+  - Display transaction success or failure status.
+  - Show the submitted transaction hash.
+  - Copy transaction hashes directly from the application.
+
+- 📜 **Soroban Smart Contract**
+  - Interact with a deployed Soroban smart contract.
+  - Call the `hello` contract function from the connected wallet.
+  - Simulate and prepare the contract transaction through Stellar RPC.
+  - Approve the smart contract transaction through the wallet.
+  - Display the contract response after successful execution.
+
+- 📋 **Wallet Address Copy**
+  - Copy the connected wallet address directly from the application.
 
 - 📱 **Responsive UI**
   - Clean interface designed for desktop and mobile screens.
@@ -37,19 +53,23 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 |---|---|
 | ⚛️ React | Frontend UI |
 | 🔷 TypeScript | Application logic |
-| ⚡ Vite | Development & build tool |
+| ⚡ Vite | Development and build tool |
 | ⭐ Stellar SDK | Stellar blockchain interaction |
-| 🦊 Freighter API | Wallet connection & signing |
+| 👛 Stellar Wallets Kit | Multi-wallet connection and transaction signing |
+| 📜 Soroban | Smart contract interaction |
+| 🌐 Stellar RPC | Soroban transaction simulation and submission |
 | 🎨 CSS | UI styling |
-| 🌐 Stellar Testnet | Blockchain network |
+| 🧪 Stellar Testnet | Blockchain network |
 
 ---
 
 ## 🔄 How It Works
 
+### 💸 XLM Payment Flow
+
 ```text
 ┌─────────────────────────┐
-│   Connect Freighter     │
+│   Connect Stellar Wallet │
 └────────────┬────────────┘
              │
              ▼
@@ -60,7 +80,7 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
              ▼
 ┌─────────────────────────┐
 │   Enter Recipient +     │
-│       XLM Amount        │
+│      XLM Amount         │
 └────────────┬────────────┘
              │
              ▼
@@ -70,7 +90,7 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
              │
              ▼
 ┌─────────────────────────┐
-│   Sign with Freighter   │
+│   Sign with Wallet      │
 └────────────┬────────────┘
              │
              ▼
@@ -84,6 +104,49 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 │    Success Message      │
 └─────────────────────────┘
 ```
+
+### 📜 Soroban Smart Contract Flow
+
+```text
+┌─────────────────────────┐
+│   Connect Stellar Wallet │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│  Call Hello Contract    │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│  Simulate Contract Call │
+│      through RPC        │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Prepare Contract        │
+│      Transaction        │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Wallet Confirmation     │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Submit to Stellar       │
+│        Testnet          │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Contract Response +     │
+│   Transaction Hash      │
+└─────────────────────────┘
+```
+
 ---
 
 ## ⚙️ Getting Started
@@ -95,7 +158,7 @@ Make sure you have:
 - Node.js
 - npm
 - A Chromium-based browser
-- Freighter Wallet extension
+- A compatible Stellar wallet
 - A Stellar Testnet account
 
 ### 2. Clone the Repository
@@ -103,6 +166,7 @@ Make sure you have:
 ```bash
 git clone https://github.com/Aman-356236/Stellar-XLM-Pay.git
 ```
+
 ### 3. Enter the Project
 
 ```bash
@@ -120,18 +184,20 @@ npm install
 ```bash
 npm run dev
 ```
+
 Open the local URL shown in your terminal.
 
 ---
 
-## 🦊 Freighter Setup
+## 👛 Stellar Wallet Setup
 
-1. Install the Freighter browser extension.
+1. Install a supported Stellar wallet.
 2. Create or import a Stellar wallet.
 3. Switch the wallet network to **Testnet**.
 4. Open the Stellar XLM Pay application.
-5. Click **Connect Freighter Wallet**.
-6. Approve the wallet connection.
+5. Click **Connect Wallet**.
+6. Select your preferred supported wallet.
+7. Approve the wallet connection.
 
 > ⚠️ This application uses the **Stellar Testnet**. Do not use real funds.
 
@@ -139,14 +205,68 @@ Open the local URL shown in your terminal.
 
 ## 💸 Sending XLM
 
-1. Connect your Freighter wallet.
+1. Connect your Stellar wallet.
 2. Enter the recipient's Stellar address.
 3. Enter the amount of XLM.
 4. Click **Send XLM**.
-5. Confirm the transaction in Freighter.
+5. Confirm the transaction in your wallet.
 6. Wait for the transaction to be submitted.
-7. View the transaction hash on the application.
+7. View the transaction hash in the application.
 8. Refresh the balance if required.
+
+---
+
+## 📜 Soroban Smart Contract
+
+Stellar XLM Pay also integrates with a deployed **Soroban smart contract** on the Stellar Testnet.
+
+### Smart Contract Function
+
+The deployed contract exposes the following function:
+
+```rust
+pub fn hello(env: Env, to: String) -> Vec<String>
+```
+
+The frontend calls the `hello` function with the value:
+
+```text
+Aman
+```
+
+The application then displays the contract response:
+
+```text
+Hello, Aman
+```
+
+### Smart Contract Flow
+
+The application:
+
+1. Connects the user's Stellar wallet.
+2. Creates the Soroban contract invocation.
+3. Passes the `Aman` string argument.
+4. Simulates the transaction using Stellar RPC.
+5. Prepares the transaction.
+6. Requests wallet approval.
+7. Submits the signed transaction to Stellar Testnet.
+8. Waits for transaction confirmation.
+9. Displays the contract response.
+10. Displays the smart contract transaction hash.
+
+### Deployed Contract
+
+```text
+Contract ID:
+CBHIDPEYSZ2M6CHXD2JTYT4ZNFAXWBYDCO6E2JDHSN4OH65QCZS5BR5R
+```
+
+### Contract Network
+
+```text
+Stellar Testnet
+```
 
 ---
 
@@ -167,6 +287,7 @@ Open the local URL shown in your terminal.
 ### 📋 Transaction Result
 
 ![Transaction Result](screenshots/transaction-result.png)
+
 ---
 
 ## 🌐 Stellar Testnet
@@ -178,11 +299,18 @@ This project currently runs on the **Stellar Testnet**.
 ```text
 https://horizon-testnet.stellar.org
 ```
-All transactions made through this application are test transactions.
+
+### Soroban RPC Endpoint
+
+```text
+https://soroban-testnet.stellar.org
+```
+
+All transactions and smart contract interactions made through this application are test transactions.
 
 ---
 
-## 🧪 Tested Transaction
+## 🧪 Tested XLM Transaction
 
 The application has been successfully tested with a real **1 XLM Testnet transaction**.
 
@@ -195,7 +323,7 @@ Balance Fetched
        ↓
 1 XLM Entered
        ↓
-Freighter Confirmation
+Wallet Confirmation
        ↓
 Transaction Submitted
        ↓
@@ -216,12 +344,62 @@ Transaction Hash Generated
 
 ```text
 adc5b2369ef852a9e8301036c218538c650f5ccd0a7309f3f2f07a70d3d51b40
+```
+
+---
+
+## 🧪 Tested Soroban Contract
+
+The Soroban smart contract integration has also been successfully tested on the **Stellar Testnet**.
+
+### Tested Flow
+
+```text
+Wallet Connected
+       ↓
+Call Hello Contract
+       ↓
+Contract Simulation
+       ↓
+Transaction Prepared
+       ↓
+Wallet Confirmation
+       ↓
+Contract Transaction Submitted
+       ↓
+Transaction Confirmed
+       ↓
+"Hello, Aman"
+       ↓
+Transaction Hash Generated
+```
+
+### Result
+
+**Contract Status:** ✅ Successful
+
+**Network:** Stellar Testnet
+
+**Function:** `hello`
+
+**Input:**
+
+```text
+Aman
+```
+
+**Contract Response:**
+
+```text
+Hello, Aman
+```
 
 ---
 
 ## 🔐 Security
 
 - 🔒 Private keys are never requested by the application.
+- 🔒 Wallet transactions require user approval.
 - 🔒 Never share your wallet secret key.
 - 🔒 Never share your recovery phrase.
 - 🔒 Never commit private keys or secrets to GitHub.
@@ -229,7 +407,7 @@ adc5b2369ef852a9e8301036c218538c650f5ccd0a7309f3f2f07a70d3d51b40
 
 ---
 
-## 📁 Project Structure 
+## 📁 Project Structure
 
 ```text
 Stellar-XLM-Pay/
@@ -259,6 +437,7 @@ Stellar-XLM-Pay/
 ├── vite.config.ts
 └── README.md
 ```
+
 ---
 
 ## 🚧 Future Improvements
@@ -269,7 +448,7 @@ Stellar-XLM-Pay/
 - ⏳ Better transaction loading states
 - ⚠️ Improved error handling
 - 🌐 Network selection
-- 🦊 Additional wallet support
+- 👛 Additional wallet support
 - 🎨 Further UI improvements
 
 ---
