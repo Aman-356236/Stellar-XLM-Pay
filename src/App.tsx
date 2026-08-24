@@ -27,6 +27,9 @@ StellarWalletsKit.setNetwork(
 const CONTRACT_ID =
   'CBHIDPEYSZ2M6CHXD2JTYT4ZNFAXWBYDCO6E2JDHSN4OH65QCZS5BR5R'
 
+const HORIZON_URL =
+  'https://horizon-testnet.stellar.org'
+
 const RPC_URL =
   'https://soroban-testnet.stellar.org'
 
@@ -77,12 +80,20 @@ function App() {
     useState(false)
 
   const server = new Horizon.Server(
-    'https://horizon-testnet.stellar.org',
+    HORIZON_URL,
   )
 
   const rpcServer = new rpc.Server(
     RPC_URL,
   )
+
+  const clearMessages = () => {
+    setError('')
+    setSuccess('')
+    setTransactionHash('')
+    setCopied(false)
+    setTransactionStatus('')
+  }
 
   const fetchBalance = async (
     address: string,
@@ -116,7 +127,8 @@ function App() {
   const connectWallet = async () => {
     if (
       connectingWallet ||
-      loading
+      loading ||
+      contractLoading
     ) {
       return
     }
@@ -162,7 +174,7 @@ function App() {
       setTransactionStatus('')
 
       setSuccess(
-        'Wallet connected successfully! 🎉',
+        'Wallet connected successfully!',
       )
     } catch (err) {
       console.error(err)
@@ -201,17 +213,12 @@ function App() {
 
   const sendXLM = async () => {
     try {
-      setError('')
-      setSuccess('')
-      setTransactionHash('')
-      setCopied(false)
-      setTransactionStatus('')
+      clearMessages()
 
       if (!walletAddress) {
         setError(
           'Please connect your wallet first.',
         )
-
         return
       }
 
@@ -222,7 +229,6 @@ function App() {
         setError(
           'Please enter a recipient address.',
         )
-
         return
       }
 
@@ -233,7 +239,6 @@ function App() {
         setError(
           'Please enter a valid Stellar recipient address.',
         )
-
         return
       }
 
@@ -244,7 +249,6 @@ function App() {
         setError(
           'You cannot send XLM to your own wallet.',
         )
-
         return
       }
 
@@ -255,7 +259,6 @@ function App() {
         setError(
           'Please enter an XLM amount.',
         )
-
         return
       }
 
@@ -271,7 +274,6 @@ function App() {
         setError(
           'Please enter a valid XLM amount greater than 0.',
         )
-
         return
       }
 
@@ -285,7 +287,6 @@ function App() {
         setError(
           'XLM amount cannot have more than 7 decimal places.',
         )
-
         return
       }
 
@@ -300,7 +301,6 @@ function App() {
         setError(
           'Unable to read your current XLM balance.',
         )
-
         return
       }
 
@@ -311,7 +311,6 @@ function App() {
         setError(
           'Insufficient XLM balance. Keep some XLM available for the transaction fee.',
         )
-
         return
       }
 
@@ -369,13 +368,9 @@ function App() {
       if (
         !signedTransaction?.signedTxXdr
       ) {
-        setError(
+        throw new Error(
           'Transaction signing was rejected or failed.',
         )
-
-        setTransactionStatus('')
-
-        return
       }
 
       setTransactionStatus(
@@ -394,7 +389,7 @@ function App() {
         )
 
       setSuccess(
-        'XLM sent successfully! 🎉',
+        'XLM sent successfully!',
       )
 
       setTransactionHash(
@@ -466,7 +461,6 @@ function App() {
           setError(
             'Please connect your wallet first.',
           )
-
           return
         }
 
@@ -524,11 +518,6 @@ function App() {
             transaction,
           )
 
-        console.log(
-          'Prepared contract transaction:',
-          preparedTransaction,
-        )
-
         const transactionXDR =
           preparedTransaction.toXDR()
 
@@ -570,11 +559,6 @@ function App() {
             signedTx,
           )
 
-        console.log(
-          'Contract transaction response:',
-          sendResponse,
-        )
-
         if (
           sendResponse.status ===
           'ERROR'
@@ -613,11 +597,6 @@ function App() {
             )
         }
 
-        console.log(
-          'Contract result:',
-          getResponse,
-        )
-
         if (
           getResponse.status !==
           'SUCCESS'
@@ -638,7 +617,7 @@ function App() {
         )
 
         setSuccess(
-          'Smart contract called successfully! 🎉',
+          'Smart contract called successfully!',
         )
 
         setTransactionStatus(
@@ -720,7 +699,6 @@ function App() {
 
       try {
         setRefreshing(true)
-
         await fetchBalance(
           walletAddress,
         )
@@ -758,23 +736,28 @@ function App() {
         )}...${walletAddress.slice(-6)}`
       : ''
 
-  const walletButtonText =
-    connectingWallet
-      ? 'Opening Wallets...'
-      : walletAddress
-        ? 'Wallet Connected'
-        : 'Connect Stellar Wallet'
-
   return (
     <div className="app">
       <header className="navbar">
-        <div className="logo">
-          Stellar XLM Pay
+        <div className="brand">
+          <div className="brand-icon">
+            ✦
+          </div>
+
+          <div>
+            <div className="logo">
+              Stellar XLM Pay
+            </div>
+
+            <div className="brand-subtitle">
+              Soroban Payment dApp
+            </div>
+          </div>
         </div>
 
         {walletAddress ? (
           <button
-            className="connect-btn"
+            className="connect-btn connected"
             onClick={
               disconnectWallet
             }
@@ -784,7 +767,8 @@ function App() {
               contractLoading
             }
           >
-            Disconnect Wallet
+            <span className="online-dot" />
+            Disconnect
           </button>
         ) : (
           <button
@@ -804,147 +788,172 @@ function App() {
         )}
       </header>
 
-      <main className="hero-section">
-        <h1>
-          Send XLM. Fast. Simple. Secure.
-        </h1>
+      <main>
+        <section className="hero-section">
+          <div className="hero-badge">
+            <span className="badge-dot" />
+            Stellar Testnet
+          </div>
 
-        <p className="subtitle">
-          A Stellar payment app with
-          multi-wallet support and
-          Soroban smart contract
-          integration on Testnet.
-        </p>
+          <h1>
+            Send XLM.
+            <span> Fast. Simple. Secure.</span>
+          </h1>
 
-        <button
-          className="primary-btn"
-          onClick={
-            connectWallet
-          }
-          disabled={
-            loading ||
-            connectingWallet ||
-            Boolean(walletAddress)
-          }
-        >
-          {walletButtonText}
-        </button>
+          <p className="subtitle">
+            A modern Stellar payment dApp
+            with multi-wallet support,
+            real-time balance tracking,
+            XLM transfers, and Soroban
+            smart contract integration.
+          </p>
+
+          {!walletAddress && (
+            <button
+              className="primary-btn"
+              onClick={
+                connectWallet
+              }
+              disabled={
+                loading ||
+                connectingWallet
+              }
+            >
+              {connectingWallet
+                ? 'Opening Wallets...'
+                : 'Connect Stellar Wallet'}
+              <span>→</span>
+            </button>
+          )}
+
+          {walletAddress && (
+            <div className="wallet-address">
+              <div className="wallet-label">
+                <span className="online-dot" />
+                Connected Wallet
+              </div>
+
+              <div className="wallet-display">
+                <span className="wallet-short-address">
+                  {shortWalletAddress}
+                </span>
+
+                <button
+                  type="button"
+                  className="wallet-copy-btn"
+                  onClick={
+                    copyWalletAddress
+                  }
+                >
+                  {walletCopied
+                    ? '✓ Copied'
+                    : '📋 Copy'}
+                </button>
+              </div>
+
+              <p className="balance-network">
+                Connected through Stellar
+                Wallets Kit
+              </p>
+            </div>
+          )}
+        </section>
 
         {walletAddress && (
-          <div className="wallet-address">
-            <div className="wallet-label">
-              <span>
-                Connected Wallet
-              </span>
+          <section className="dashboard-grid">
+            <div className="balance-card">
+              <div className="card-top">
+                <div className="card-icon">
+                  ◈
+                </div>
+
+                <span className="card-label">
+                  Available Balance
+                </span>
+
+                <span className="network-pill">
+                  TESTNET
+                </span>
+              </div>
+
+              <div className="balance-amount">
+                {Number(balance || 0).toFixed(2)}
+                <span> XLM</span>
+              </div>
+
+              <div className="balance-footer">
+                <span>
+                  Stellar Testnet
+                </span>
+
+                <button
+                  className="refresh-btn"
+                  onClick={
+                    refreshWalletBalance
+                  }
+                  disabled={
+                    refreshing ||
+                    loading ||
+                    contractLoading
+                  }
+                >
+                  {refreshing
+                    ? '↻ Refreshing...'
+                    : '↻ Refresh'}
+                </button>
+              </div>
             </div>
 
-            <div className="wallet-display">
-              <span className="wallet-short-address">
-                {shortWalletAddress}
-              </span>
+            <div className="contract-card">
+              <div className="contract-header">
+                <div className="contract-icon">
+                  ◇
+                </div>
+
+                <div>
+                  <h2>
+                    Soroban Contract
+                  </h2>
+
+                  <span>
+                    Smart contract integration
+                  </span>
+                </div>
+              </div>
+
+              <p>
+                Execute the deployed
+                <strong> hello </strong>
+                function using your connected
+                Stellar wallet.
+              </p>
 
               <button
-                type="button"
-                className="wallet-copy-btn"
+                className="contract-btn"
                 onClick={
-                  copyWalletAddress
+                  callHelloContract
+                }
+                disabled={
+                  contractLoading ||
+                  loading
                 }
               >
-                {walletCopied
-                  ? '✓ Copied!'
-                  : '📋 Copy'}
+                {contractLoading
+                  ? 'Calling Contract...'
+                  : 'Call Hello Contract'}
+                {!contractLoading && (
+                  <span>→</span>
+                )}
               </button>
+
+              {contractMessage && (
+                <div className="contract-result">
+                  <span>✓</span>
+                  {contractMessage}
+                </div>
+              )}
             </div>
-
-            <p className="balance-network">
-              Connected using Stellar
-              Wallets Kit
-            </p>
-          </div>
-        )}
-
-        {balance && (
-          <div className="balance-card">
-            <div className="balance-header">
-              <span>💰</span>
-
-              <span>
-                XLM Balance
-              </span>
-            </div>
-
-            <div className="balance-amount">
-              {Number(
-                balance,
-              ).toFixed(2)}
-
-              <span>
-                {' '}
-                XLM
-              </span>
-            </div>
-
-            <p className="balance-network">
-              Stellar Testnet
-            </p>
-
-            <button
-              className="refresh-btn"
-              onClick={
-                refreshWalletBalance
-              }
-              disabled={
-                refreshing ||
-                loading ||
-                contractLoading
-              }
-            >
-              {refreshing
-                ? 'Refreshing...'
-                : 'Refresh Balance'}
-            </button>
-          </div>
-        )}
-
-        {walletAddress && (
-          <div className="contract-card">
-            <h2>
-              Smart Contract
-            </h2>
-
-            <p>
-              Call the deployed Soroban
-              Hello contract from your
-              connected wallet.
-            </p>
-
-            <button
-              className="send-btn"
-              onClick={
-                callHelloContract
-              }
-              disabled={
-                contractLoading ||
-                loading
-              }
-            >
-              {contractLoading
-                ? 'Calling Contract...'
-                : 'Call Hello Contract'}
-            </button>
-
-            {contractMessage && (
-              <p className="transaction-confirmed">
-                ✓ {contractMessage}
-              </p>
-            )}
-
-            <p className="balance-network">
-              Contract:
-              <br />
-              {CONTRACT_ID}
-            </p>
-          </div>
+          </section>
         )}
 
         {transactionStatus &&
@@ -962,171 +971,322 @@ function App() {
 
         {success && (
           <div className="success-message">
-            <p>{success}</p>
+            <div className="success-icon">
+              ✓
+            </div>
 
-            {transactionStatus && (
-              <p className="transaction-confirmed">
-                ✓{' '}
-                {transactionStatus}
+            <div className="success-content">
+              <p className="success-title">
+                {success}
               </p>
-            )}
 
-            {transactionHash && (
-              <div className="transaction-result">
-                <p className="transaction-title">
-                  Transaction Hash:
+              {transactionStatus && (
+                <p className="transaction-confirmed">
+                  {transactionStatus}
                 </p>
+              )}
 
-                <p className="transaction-hash">
-                  {transactionHash}
-                </p>
+              {transactionHash && (
+                <div className="transaction-result">
+                  <p className="transaction-title">
+                    Transaction Hash
+                  </p>
 
-                <button
-                  type="button"
-                  className="copy-btn"
-                  onClick={
-                    copyTransactionHash
-                  }
-                >
-                  {copied
-                    ? '✓ Copied!'
-                    : '📋 Copy Hash'}
-                </button>
-              </div>
-            )}
+                  <p className="transaction-hash">
+                    {transactionHash}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="copy-btn"
+                    onClick={
+                      copyTransactionHash
+                    }
+                  >
+                    {copied
+                      ? '✓ Copied!'
+                      : '📋 Copy Hash'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {error && (
-          <p className="error-message">
-            {error}
-          </p>
+          <div className="error-message">
+            <span className="error-icon">
+              !
+            </span>
+
+            <span>{error}</span>
+          </div>
         )}
+
+        {walletAddress && (
+          <section className="send-section">
+            <div className="section-heading">
+              <div>
+                <span className="section-kicker">
+                  PAYMENT
+                </span>
+
+                <h2>
+                  Send XLM
+                </h2>
+
+                <p>
+                  Transfer native Stellar
+                  Lumens to another wallet.
+                </p>
+              </div>
+
+              <div className="payment-icon">
+                ↗
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>
+                Recipient Address
+              </label>
+
+              <input
+                type="text"
+                placeholder="G... Stellar wallet address"
+                className="send-input"
+                value={recipient}
+                onChange={(e) =>
+                  setRecipient(
+                    e.target.value,
+                  )
+                }
+                disabled={loading}
+              />
+            </div>
+
+            <div className="input-group">
+              <label>
+                Amount
+              </label>
+
+              <div className="amount-wrapper">
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  className="send-input amount-input"
+                  min="0"
+                  step="0.0000001"
+                  value={amount}
+                  onChange={(e) =>
+                    setAmount(
+                      e.target.value,
+                    )
+                  }
+                  disabled={loading}
+                />
+
+                <span className="amount-unit">
+                  XLM
+                </span>
+              </div>
+            </div>
+
+            <button
+              className="send-btn"
+              onClick={
+                sendXLM
+              }
+              disabled={loading}
+            >
+              {loading
+                ? 'Processing Transaction...'
+                : 'Send XLM'}
+              {!loading && (
+                <span>→</span>
+              )}
+            </button>
+
+            <div className="fee-note">
+              <span>ⓘ</span>
+              Network fee is paid in XLM.
+              Keep a small balance available
+              for transaction fees.
+            </div>
+          </section>
+        )}
+
+        <section className="features-section">
+          <div className="section-title">
+            <span className="section-kicker">
+              FEATURES
+            </span>
+
+            <h2>
+              Built for Stellar
+            </h2>
+
+            <p>
+              Everything you need for a
+              simple Testnet payment
+              experience.
+            </p>
+          </div>
+
+          <div className="features">
+            <div className="feature-card">
+              <div className="feature-icon">
+                👛
+              </div>
+
+              <h2>
+                Multi-Wallet
+              </h2>
+
+              <p>
+                Connect supported Stellar
+                wallets through Stellar
+                Wallets Kit.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                ◈
+              </div>
+
+              <h2>
+                Live Balance
+              </h2>
+
+              <p>
+                View and refresh your
+                current Stellar Testnet
+                XLM balance.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                ↗
+              </div>
+
+              <h2>
+                Fast Payments
+              </h2>
+
+              <p>
+                Send XLM directly from your
+                connected wallet.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                ◇
+              </div>
+
+              <h2>
+                Soroban
+              </h2>
+
+              <p>
+                Interact with a deployed
+                smart contract from the
+                frontend.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="network-info">
+          <div className="network-info-card">
+            <div className="network-heading">
+              <div className="network-icon">
+                🌐
+              </div>
+
+              <div>
+                <span className="section-kicker">
+                  CONFIGURATION
+                </span>
+
+                <h2>
+                  Network Information
+                </h2>
+              </div>
+            </div>
+
+            <div className="network-grid">
+              <div>
+                <span>
+                  Network
+                </span>
+
+                <strong>
+                  Stellar Testnet
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Smart Contract
+                </span>
+
+                <strong>
+                  Soroban
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  RPC
+                </span>
+
+                <strong>
+                  Soroban Testnet
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Function
+                </span>
+
+                <strong>
+                  hello
+                </strong>
+              </div>
+            </div>
+
+            <div className="contract-address">
+              <span>
+                Contract ID
+              </span>
+
+              <code>
+                {CONTRACT_ID}
+              </code>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {walletAddress && (
-        <section className="send-section">
-          <h2>
-            Send XLM
-          </h2>
+      <footer className="footer">
+        <div>
+          <strong>
+            Stellar XLM Pay
+          </strong>
 
-          <input
-            type="text"
-            placeholder="Recipient Stellar Address"
-            className="send-input"
-            value={recipient}
-            onChange={(e) =>
-              setRecipient(
-                e.target.value,
-              )
-            }
-            disabled={loading}
-          />
-
-          <input
-            type="number"
-            placeholder="Amount in XLM"
-            className="send-input"
-            min="0"
-            step="0.0000001"
-            value={amount}
-            onChange={(e) =>
-              setAmount(
-                e.target.value,
-              )
-            }
-            disabled={loading}
-          />
-
-          <button
-            className="send-btn"
-            onClick={
-              sendXLM
-            }
-            disabled={loading}
-          >
-            {loading
-              ? 'Processing Transaction...'
-              : 'Send XLM'}
-          </button>
-        </section>
-      )}
-
-      <section className="features">
-        <div className="feature-card">
-          <h2>
-            👛 Multi-Wallet
-          </h2>
-
-          <p>
-            Connect supported Stellar
-            wallets through Stellar
-            Wallets Kit.
-          </p>
+          <span>
+            Built on Stellar Testnet
+          </span>
         </div>
 
-        <div className="feature-card">
-          <h2>
-            💰 XLM Balance
-          </h2>
-
-          <p>
-            View your current Stellar
-            Testnet balance.
-          </p>
-        </div>
-
-        <div className="feature-card">
-          <h2>
-            🚀 Send XLM
-          </h2>
-
-          <p>
-            Send XLM transactions on
-            the Stellar Testnet.
-          </p>
-        </div>
-
-        <div className="feature-card">
-          <h2>
-            📜 Soroban Contract
-          </h2>
-
-          <p>
-            Call a deployed smart
-            contract directly from
-            the frontend.
-          </p>
-        </div>
-      </section>
-
-      <section className="network-info">
-        <div className="network-info-card">
-          <h2>
-            🌐 Network Information
-          </h2>
-
-          <p>
-            <strong>Network:</strong>{' '}
-            Stellar Testnet
-          </p>
-
-          <p>
-            <strong>Smart Contract:</strong>{' '}
-            Soroban
-          </p>
-
-          <p>
-            <strong>RPC:</strong>{' '}
-            Soroban Testnet RPC
-          </p>
-
-          <p>
-            <strong>Contract Function:</strong>{' '}
-            hello
-          </p>
-        </div>
-      </section>
+        <span>
+          Soroban • XLM • Web3
+        </span>
+      </footer>
     </div>
   )
 }
