@@ -2,7 +2,9 @@
 
 ### A simple, fast and secure Stellar Testnet payment dApp.
 
-Stellar XLM Pay is a decentralized payment application that allows users to connect a supported **Stellar wallet**, check their **XLM balance**, send **XLM transactions**, and interact with a deployed **Soroban smart contract** securely on the **Stellar Testnet**.
+Stellar XLM Pay is a decentralized payment application that allows users to connect supported **Stellar wallets**, check their **XLM balance**, send **XLM transactions**, and interact with a deployed **Soroban smart contract** securely on the **Stellar Testnet**.
+
+The application also demonstrates **multi-wallet integration, smart contract invocation, actual contract return-value reading, real-time contract event handling, and transaction status tracking**.
 
 ---
 
@@ -10,6 +12,7 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 
 - 🔐 **Stellar Wallet Connection**
   - Connect supported Stellar wallets through **Stellar Wallets Kit**.
+  - Display available wallet options.
   - Approve wallet connections securely.
   - Disconnect the connected wallet.
 
@@ -23,12 +26,17 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 - 🚀 **Send XLM**
   - Send XLM to another Stellar Testnet address.
   - Validate recipient addresses and XLM amounts before submitting.
+  - Prevent sending more XLM than the available balance.
 
 - 🦊 **Wallet Transaction Signing**
   - Transactions are securely signed through the connected Stellar wallet.
+  - The application never requests or stores private keys.
 
-- ✅ **Transaction Confirmation**
-  - Display transaction success or failure status.
+- ✅ **Transaction Status Tracking**
+  - Display transaction preparation status.
+  - Display wallet approval status.
+  - Display submission status.
+  - Display success or failure status.
   - Show the submitted transaction hash.
   - Copy transaction hashes directly from the application.
 
@@ -37,13 +45,28 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
   - Call the `hello` contract function from the connected wallet.
   - Simulate and prepare the contract transaction through Stellar RPC.
   - Approve the smart contract transaction through the wallet.
-  - Display the contract response after successful execution.
+  - Read the actual contract return value.
+  - Display the returned contract data.
+
+- 📡 **Real-Time Contract Events**
+  - Listen for the `hello` contract event after successful execution.
+  - Display the received event data.
+  - Display the ledger associated with the event.
+  - Display the contract-call transaction hash.
+  - Synchronize contract state with the frontend in real time.
 
 - 📋 **Wallet Address Copy**
   - Copy the connected wallet address directly from the application.
 
 - 📱 **Responsive UI**
   - Clean interface designed for desktop and mobile screens.
+
+- ⚠️ **Error Handling**
+  - Wallet rejected/not available.
+  - Transaction rejected or failed.
+  - Insufficient XLM balance.
+  - Invalid recipient or amount.
+  - Smart contract transaction errors.
 
 ---
 
@@ -59,6 +82,7 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 | 📜 Soroban | Smart contract interaction |
 | 🌐 Stellar RPC | Soroban transaction simulation and submission |
 | 🎨 CSS | UI styling |
+| 🦀 Rust | Soroban smart contract development |
 | 🧪 Stellar Testnet | Blockchain network |
 
 ---
@@ -90,12 +114,12 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
              │
              ▼
 ┌─────────────────────────┐
-│   Sign with Wallet      │
+│    Sign with Wallet     │
 └────────────┬────────────┘
              │
              ▼
 ┌─────────────────────────┐
-│    Submit to Testnet    │
+│   Submit to Testnet     │
 └────────────┬────────────┘
              │
              ▼
@@ -142,8 +166,20 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
              │
              ▼
 ┌─────────────────────────┐
-│ Contract Response +     │
-│   Transaction Hash      │
+│ Read Contract Return    │
+│        Value             │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Detect Contract Event   │
+│      in Real Time       │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Event Data + Ledger +   │
+│    Transaction Hash     │
 └─────────────────────────┘
 ```
 
@@ -196,10 +232,20 @@ Open the local URL shown in your terminal.
 3. Switch the wallet network to **Testnet**.
 4. Open the Stellar XLM Pay application.
 5. Click **Connect Wallet**.
-6. Select your preferred supported wallet.
+6. Select your preferred supported wallet from the wallet options.
 7. Approve the wallet connection.
 
 > ⚠️ This application uses the **Stellar Testnet**. Do not use real funds.
+
+---
+
+## 📸 Wallet Options
+
+The application uses **Stellar Wallets Kit** to provide a multi-wallet connection experience.
+
+When the user selects **Connect Wallet**, the wallet selection interface is displayed.
+
+![Wallet Options](screenshots/wallet-options.png)
 
 ---
 
@@ -216,11 +262,11 @@ Open the local URL shown in your terminal.
 
 ---
 
-## 📜 Soroban Smart Contract
+# 📜 Soroban Smart Contract
 
-Stellar XLM Pay also integrates with a deployed **Soroban smart contract** on the Stellar Testnet.
+Stellar XLM Pay integrates with a deployed **Soroban smart contract** on the Stellar Testnet.
 
-### Smart Contract Function
+## Smart Contract Function
 
 The deployed contract exposes the following function:
 
@@ -228,19 +274,56 @@ The deployed contract exposes the following function:
 pub fn hello(env: Env, to: String) -> Vec<String>
 ```
 
-The frontend calls the `hello` function with the value:
+The frontend calls the `hello` function with:
 
 ```text
 Aman
 ```
 
-The application then displays the contract response:
+The contract returns the actual value:
 
 ```text
-Hello, Aman
+["Hello", "Aman"]
 ```
 
-### Smart Contract Flow
+The frontend reads this returned value and displays it as:
+
+```text
+Actual Return Value
+
+["Hello","Aman"]
+```
+
+---
+
+## 📡 Real-Time Contract Event
+
+The `hello` function also emits a contract event when it is successfully executed.
+
+The frontend detects and displays the received event information.
+
+Example successful event:
+
+```text
+Real-time Event
+
+Live contract event received!
+
+Event Data:
+Contract event received successfully.
+
+Ledger:
+4316360
+
+Transaction:
+0ecb6ed10f29fe879c05849a0dd500738068a20d19226e1cf60663252ed79239
+```
+
+This demonstrates real-time contract event integration and frontend state synchronization.
+
+---
+
+## 🔄 Smart Contract Flow
 
 The application:
 
@@ -252,25 +335,74 @@ The application:
 6. Requests wallet approval.
 7. Submits the signed transaction to Stellar Testnet.
 8. Waits for transaction confirmation.
-9. Displays the contract response.
-10. Displays the smart contract transaction hash.
+9. Reads the actual contract return value.
+10. Displays `["Hello","Aman"]`.
+11. Detects the emitted contract event.
+12. Displays the event data.
+13. Displays the associated ledger.
+14. Displays the contract transaction hash.
 
-### Deployed Contract
+---
+
+## 🧾 Deployed Contract
+
+### Contract ID
 
 ```text
-Contract ID:
-CBHIDPEYSZ2M6CHXD2JTYT4ZNFAXWBYDCO6E2JDHSN4OH65QCZS5BR5R
+CBR2BJNOVWPBPZX44LH5YNXXJ3FAMZ4XTRHO3UVBYRDNQJBZUEVZAUXI
 ```
 
-### Contract Network
+### Network
 
 ```text
 Stellar Testnet
 ```
 
+### Contract Function
+
+```text
+hello
+```
+
+### Contract Input
+
+```text
+Aman
+```
+
+### Actual Contract Return Value
+
+```text
+["Hello","Aman"]
+```
+
+---
+
+## 🔎 Verified Contract Call
+
+The smart contract has been successfully called from the frontend on the Stellar Testnet.
+
+### Contract Call Transaction Hash
+
+```text
+0ecb6ed10f29fe879c05849a0dd500738068a20d19226e1cf60663252ed79239
+```
+
+### Event Ledger
+
+```text
+4316360
+```
+
+The contract-call transaction can be verified on the Stellar Testnet explorer.
+
 ---
 
 ## 📸 Screenshots
+
+### 🔐 Wallet Options
+
+![Wallet Options](screenshots/wallet-options.png)
 
 ### 🔐 Wallet Connected
 
@@ -287,6 +419,16 @@ Stellar Testnet
 ### 📋 Transaction Result
 
 ![Transaction Result](screenshots/transaction-result.png)
+
+### 📜 Soroban Contract Call
+
+![Contract Call](screenshots/contract-call.png)
+
+### 📡 Real-Time Contract Event
+
+![Real-Time Event](screenshots/contract-event.png)
+
+> Add the corresponding screenshots to the `screenshots/` folder before submitting.
 
 ---
 
@@ -310,7 +452,7 @@ All transactions and smart contract interactions made through this application a
 
 ---
 
-## 🧪 Tested XLM Transaction
+# 🧪 Tested XLM Transaction
 
 The application has been successfully tested with a real **1 XLM Testnet transaction**.
 
@@ -348,9 +490,9 @@ adc5b2369ef852a9e8301036c218538c650f5ccd0a7309f3f2f07a70d3d51b40
 
 ---
 
-## 🧪 Tested Soroban Contract
+# 🧪 Tested Soroban Contract
 
-The Soroban smart contract integration has also been successfully tested on the **Stellar Testnet**.
+The Soroban smart contract integration has been successfully tested on the **Stellar Testnet**.
 
 ### Tested Flow
 
@@ -369,9 +511,15 @@ Contract Transaction Submitted
        ↓
 Transaction Confirmed
        ↓
-"Hello, Aman"
+Actual Return Value Read
        ↓
-Transaction Hash Generated
+["Hello","Aman"]
+       ↓
+Contract Event Detected
+       ↓
+Event Data Displayed
+       ↓
+Transaction Hash Displayed
 ```
 
 ### Result
@@ -388,11 +536,46 @@ Transaction Hash Generated
 Aman
 ```
 
-**Contract Response:**
+**Actual Return Value:**
 
 ```text
-Hello, Aman
+["Hello","Aman"]
 ```
+
+**Event Status:** ✅ Received
+
+**Event Ledger:**
+
+```text
+4316360
+```
+
+**Contract Transaction Hash:**
+
+```text
+0ecb6ed10f29fe879c05849a0dd500738068a20d19226e1cf60663252ed79239
+```
+
+---
+
+# 🛡️ Level 2 Requirements
+
+This project implements the major requirements of the Stellar Level 2 Yellow Belt submission.
+
+| Requirement | Status |
+|---|---|
+| Multi-wallet integration | ✅ Complete |
+| Stellar Wallets Kit | ✅ Complete |
+| Error handling | ✅ Complete |
+| Contract deployed on Testnet | ✅ Complete |
+| Contract called from frontend | ✅ Complete |
+| Transaction status visible | ✅ Complete |
+| Contract return value read | ✅ Complete |
+| Real-time contract event integration | ✅ Complete |
+| Event data displayed | ✅ Complete |
+| Contract transaction hash | ✅ Complete |
+| Public GitHub repository | ✅ Complete |
+| Meaningful commits | ✅ Complete |
 
 ---
 
@@ -411,14 +594,26 @@ Hello, Aman
 
 ```text
 Stellar-XLM-Pay/
+
+│
+├── contracts/
+│   └── contracts/
+│       └── hello-world/
+│           ├── src/
+│           │   ├── lib.rs
+│           │   └── test.rs
+│           └── Cargo.toml
 │
 ├── public/
 │
 ├── screenshots/
+│   ├── wallet-options.png
 │   ├── wallet-connected.png
 │   ├── balance-displayed.png
 │   ├── successful-transaction.png
-│   └── transaction-result.png
+│   ├── transaction-result.png
+│   ├── contract-call.png
+│   └── contract-event.png
 │
 ├── src/
 │   ├── assets/
@@ -443,12 +638,12 @@ Stellar-XLM-Pay/
 ## 🚧 Future Improvements
 
 - 📜 Transaction history
-- 🔎 Stellar transaction explorer links
+- 🔎 Direct Stellar Explorer links
 - 👥 Saved recipient addresses
-- ⏳ Better transaction loading states
-- ⚠️ Improved error handling
 - 🌐 Network selection
-- 👛 Additional wallet support
+- 👛 Additional wallet integrations
+- 📊 Advanced contract event history
+- 🔔 Persistent real-time activity feed
 - 🎨 Further UI improvements
 
 ---

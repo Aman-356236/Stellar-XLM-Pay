@@ -2,13 +2,19 @@
 
 use soroban_sdk::{
     contract,
+    contractevent,
     contractimpl,
-    symbol_short,
-    vec,
     Env,
     String,
     Vec,
 };
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HelloEvent {
+    pub to: String,
+    pub message: String,
+}
 
 #[contract]
 pub struct Contract;
@@ -18,14 +24,13 @@ impl Contract {
     pub fn hello(env: Env, to: String) -> Vec<String> {
         let message = String::from_str(&env, "Hello");
 
-        // Emit a contract event
-        env.events().publish(
-            (symbol_short!("hello"),),
-            to.clone(),
-        );
+        HelloEvent {
+            to: to.clone(),
+            message: message.clone(),
+        }
+        .publish(&env);
 
-        // Return the actual contract value
-        vec![&env, message, to]
+        Vec::from_array(&env, [message, to])
     }
 }
 

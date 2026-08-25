@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+
 import {
   StellarWalletsKit,
 } from '@creit.tech/stellar-wallets-kit/sdk'
+
 import {
   defaultModules,
 } from '@creit.tech/stellar-wallets-kit/modules/utils'
+
 import {
   Horizon,
   TransactionBuilder,
@@ -13,7 +20,10 @@ import {
   Asset,
   rpc,
   nativeToScVal,
+  scValToNative,
+  xdr,
 } from '@stellar/stellar-sdk'
+
 import './App.css'
 
 StellarWalletsKit.init({
@@ -25,7 +35,7 @@ StellarWalletsKit.setNetwork(
 )
 
 const CONTRACT_ID =
-  'CDGD5XXOZ3BJPT4WFWHWTZTWWP36N6RTA7BYI62O7KNIDBBTDJPWN56U'
+  'CBR2BJNOVWPBPZX44LH5YNXXJ3FAMZ4XTRHO3UVBYRDNQJBZUEVZAUXI'
 
 const HORIZON_URL =
   'https://horizon-testnet.stellar.org'
@@ -76,16 +86,43 @@ function App() {
   const [contractMessage, setContractMessage] =
     useState('')
 
+  const [contractReturnValue, setContractReturnValue] =
+    useState('')
+
+  const [contractEvent, setContractEvent] =
+    useState('')
+
+  const [contractEventHash, setContractEventHash] =
+    useState('')
+
+  const [contractEventLedger, setContractEventLedger] =
+    useState('')
+
+  const [contractEventStatus, setContractEventStatus] =
+    useState('Waiting for contract events...')
+
   const [contractLoading, setContractLoading] =
     useState(false)
 
-  const server = new Horizon.Server(
-    HORIZON_URL,
-  )
+  const server =
+    new Horizon.Server(
+      HORIZON_URL,
+    )
 
-  const rpcServer = new rpc.Server(
-    RPC_URL,
-  )
+  const rpcServer =
+    new rpc.Server(
+      RPC_URL,
+    )
+
+  const eventSeenIds =
+    useRef<Set<string>>(
+      new Set(),
+    )
+
+  const eventStartedLedger =
+    useRef<number | null>(
+      null,
+    )
 
   const clearMessages = () => {
     setError('')
@@ -102,7 +139,9 @@ function App() {
       setError('')
 
       const account =
-        await server.loadAccount(address)
+        await server.loadAccount(
+          address,
+        )
 
       const xlmBalance =
         account.balances.find(
@@ -454,6 +493,7 @@ function App() {
         setError('')
         setSuccess('')
         setContractMessage('')
+        setContractReturnValue('')
         setTransactionHash('')
         setCopied(false)
 
@@ -510,8 +550,50 @@ function App() {
             .build()
 
         setTransactionStatus(
-          'Preparing contract transaction...',
+          'Simulating contract call...',
         )
+
+        const simulation =
+          await rpcServer.simulateTransaction(
+            transaction,
+          )
+
+        if (
+          simulation.error
+        ) {
+          throw new Error(
+            String(
+              simulation.error,
+            ),
+          )
+        }
+
+        if (
+          simulation.result?.retval
+        ) {
+          try {
+            const simulatedValue =
+              scValToNative(
+                simulation.result.retval,
+              )
+
+            setContractReturnValue(
+              JSON.stringify(
+                simulatedValue,
+                (_, value) =>
+                  typeof value ===
+                  'bigint'
+                    ? value.toString()
+                    : value,
+              ),
+            )
+          } catch (decodeError) {
+            console.error(
+              'RETURN VALUE DECODE ERROR:',
+              decodeError,
+            )
+          }
+        }
 
         const preparedTransaction =
           await rpcServer.prepareTransaction(
@@ -574,43 +656,95 @@ function App() {
           'Waiting for contract confirmation...',
         )
 
-        let getResponse =
-          await rpcServer.getTransaction(
+        const finalResponse =
+          await rpcServer.pollTransaction(
             sendResponse.hash,
+            {
+              sleepStrategy:
+                () =>
+                  2000,
+              attempts: 30,
+            },
           )
-
-        while (
-          getResponse.status ===
-          'NOT_FOUND'
-        ) {
-          await new Promise(
-            (resolve) =>
-              setTimeout(
-                resolve,
-                2000,
-              ),
-          )
-
-          getResponse =
-            await rpcServer.getTransaction(
-              sendResponse.hash,
-            )
-        }
 
         if (
-          getResponse.status !==
+          finalResponse.status !==
           'SUCCESS'
         ) {
           throw new Error(
             `Smart contract transaction failed: ${JSON.stringify(
-              getResponse,
+              finalResponse,
             )}`,
           )
         }
 
-        setContractMessage(
-          'Hello, Aman',
-        )
+        if (
+          finalResponse.returnValue
+        ) {
+          try {
+            const actualReturn =
+              scValToNative(
+                finalResponse.returnValue,
+              )
+
+            setContractReturnValue(
+              JSON.stringify(
+                actualReturn,
+                (_, value) =>
+                  typeof value ===
+                  'bigint'
+                    ? value.toString()
+                    : value,
+              ),
+            )
+
+            if (
+              Array.isArray(
+                actualReturn,
+              )
+            ) {
+              const first =
+                actualReturn[0]
+
+              const second =
+                actualReturn[1]
+
+              if (
+                typeof first ===
+                'string' &&
+                typeof second ===
+                'string'
+              ) {
+                setContractMessage(
+                  `${first}, ${second}`,
+                )
+              } else {
+                setContractMessage(
+                  'Contract returned a value successfully.',
+                )
+              }
+            } else {
+              setContractMessage(
+                String(
+                  actualReturn,
+                ),
+              )
+            }
+          } catch (decodeError) {
+            console.error(
+              'ACTUAL RETURN VALUE ERROR:',
+              decodeError,
+            )
+
+            setContractMessage(
+              'Contract returned successfully.',
+            )
+          }
+        } else {
+          setContractMessage(
+            'Contract executed successfully.',
+          )
+        }
 
         setTransactionHash(
           sendResponse.hash,
@@ -699,6 +833,7 @@ function App() {
 
       try {
         setRefreshing(true)
+
         await fetchBalance(
           walletAddress,
         )
@@ -726,7 +861,174 @@ function App() {
       setWalletCopied(false)
       setTransactionStatus('')
       setContractMessage('')
+      setContractReturnValue('')
+      setContractEvent('')
+      setContractEventHash('')
+      setContractEventLedger('')
+      setContractEventStatus(
+        'Waiting for contract events...',
+      )
     }
+
+  const pollContractEvents =
+    async () => {
+      try {
+        const latestLedgerResponse =
+          await rpcServer.getLatestLedger()
+
+        const latestLedger =
+          latestLedgerResponse.sequence
+
+        if (
+          eventStartedLedger.current ===
+          null
+        ) {
+          eventStartedLedger.current =
+            Math.max(
+              1,
+              latestLedger - 5,
+            )
+        }
+
+        const startLedger =
+          eventStartedLedger.current
+
+        if (
+          startLedger >
+          latestLedger
+        ) {
+          return
+        }
+
+        const response =
+          await rpcServer.getEvents({
+            startLedger,
+            filters: [
+              {
+                type: 'contract',
+                contractIds: [
+                  CONTRACT_ID,
+                ],
+              },
+            ],
+            pagination: {
+              limit: 100,
+            },
+          })
+
+        for (
+          const event of response.events
+        ) {
+          if (
+            eventSeenIds.current.has(
+              event.id,
+            )
+          ) {
+            continue
+          }
+
+          eventSeenIds.current.add(
+            event.id,
+          )
+
+          try {
+            const eventValue =
+              scValToNative(
+                xdr.ScVal.fromXDR(
+                  event.value,
+                  'base64',
+                ),
+              )
+
+            const readableEvent =
+              JSON.stringify(
+                eventValue,
+                (_, value) =>
+                  typeof value ===
+                  'bigint'
+                    ? value.toString()
+                    : value,
+              )
+
+            setContractEvent(
+              readableEvent,
+            )
+          } catch (decodeError) {
+            console.error(
+              'EVENT DECODE ERROR:',
+              decodeError,
+            )
+
+            setContractEvent(
+              'Contract event received successfully.',
+            )
+          }
+
+          setContractEventHash(
+            event.txHash,
+          )
+
+          setContractEventLedger(
+            String(
+              event.ledger,
+            ),
+          )
+
+          setContractEventStatus(
+            'Live contract event received!',
+          )
+        }
+
+        eventStartedLedger.current =
+          Math.max(
+            startLedger,
+            latestLedger,
+          )
+      } catch (err) {
+        console.error(
+          'CONTRACT EVENT ERROR:',
+          err,
+        )
+
+        setContractEventStatus(
+          'Event listener reconnecting...',
+        )
+      }
+    }
+
+  useEffect(() => {
+    let active = true
+    let timeoutId:
+      ReturnType<typeof setTimeout> |
+      undefined
+
+    const listenForEvents =
+      async () => {
+        if (!active) return
+
+        await pollContractEvents()
+
+        if (!active) return
+
+        timeoutId =
+          setTimeout(
+            listenForEvents,
+            4000,
+          )
+      }
+
+    listenForEvents()
+
+    return () => {
+      active = false
+
+      if (timeoutId) {
+        clearTimeout(
+          timeoutId,
+        )
+      }
+    }
+  }, [])
 
   const shortWalletAddress =
     walletAddress
@@ -797,7 +1099,10 @@ function App() {
 
           <h1>
             Send XLM.
-            <span> Fast. Simple. Secure.</span>
+            <span>
+              {' '}
+              Fast. Simple. Secure.
+            </span>
           </h1>
 
           <p className="subtitle">
@@ -877,8 +1182,13 @@ function App() {
               </div>
 
               <div className="balance-amount">
-                {Number(balance || 0).toFixed(2)}
-                <span> XLM</span>
+                {Number(
+                  balance || 0,
+                ).toFixed(2)}
+                <span>
+                  {' '}
+                  XLM
+                </span>
               </div>
 
               <div className="balance-footer">
@@ -923,7 +1233,10 @@ function App() {
 
               <p>
                 Execute the deployed
-                <strong> hello </strong>
+                <strong>
+                  {' '}
+                  hello{' '}
+                </strong>
                 function using your connected
                 Stellar wallet.
               </p>
@@ -952,6 +1265,63 @@ function App() {
                   {contractMessage}
                 </div>
               )}
+
+              {contractReturnValue && (
+                <div className="contract-result">
+                  <span>↳</span>
+
+                  <div>
+                    <strong>
+                      Actual Return Value
+                    </strong>
+
+                    <div>
+                      {contractReturnValue}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="contract-result">
+                <span>
+                  {contractEventStatus.includes(
+                    'Live',
+                  )
+                    ? '●'
+                    : '◌'}
+                </span>
+
+                <div>
+                  <strong>
+                    Real-time Event
+                  </strong>
+
+                  <div>
+                    {contractEventStatus}
+                  </div>
+
+                  {contractEvent && (
+                    <div>
+                      Event Data:{' '}
+                      {contractEvent}
+                    </div>
+                  )}
+
+                  {contractEventLedger && (
+                    <div>
+                      Ledger:{' '}
+                      {contractEventLedger}
+                    </div>
+                  )}
+
+                  {contractEventHash && (
+                    <div className="transaction-hash">
+                      Tx:{' '}
+                      {contractEventHash}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
         )}
