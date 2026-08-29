@@ -1,6 +1,6 @@
 [package]
-name = "hello-world"
-version = "0.0.0"
+name = "activity-registry"
+version = "0.1.0"
 edition = "2021"
 publish = false
 
@@ -10,7 +10,6 @@ doctest = false
 
 [dependencies]
 soroban-sdk = { workspace = true }
-activity-registry = { path = "../activity-registry" }
 
 [dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
