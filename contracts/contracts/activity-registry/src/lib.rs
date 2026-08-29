@@ -12,11 +12,13 @@ const MAX_RECIPIENT_LENGTH: u32 = 128;
 pub enum ActivityRegistryError {
     InvalidRecipient = 1,
     InvalidCount = 2,
+    RecordLimitReached = 3,
 }
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Activity {
+    pub record_id: u32,
     pub caller: Address,
     pub recipient: String,
     pub count: u32,
@@ -25,15 +27,20 @@ pub struct Activity {
 #[contracttype]
 #[derive(Clone)]
 enum DataKey {
-    Activity(String),
+    LatestActivity(String),
+    ActivityById(u32),
     RecordCount,
 }
 
-#[contractevent]
+/// Stable frontend event schema.
+///
+/// Topics are `activity`, `v1`, and the caller contract/account address.
+#[contractevent(topics = ["activity", "v1"])]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActivityRecordedEvent {
     #[topic]
     pub caller: Address,
+    pub record_id: u32,
     pub recipient: String,
     pub count: u32,
 }
@@ -52,7 +59,7 @@ impl ActivityRegistry {
         caller: Address,
         recipient: String,
         count: u32,
-    ) -> Result<(), ActivityRegistryError> {
+    ) -> Result<u32, ActivityRegistryError> {
         if recipient.is_empty() || recipient.len() > MAX_RECIPIENT_LENGTH {
             return Err(ActivityRegistryError::InvalidRecipient);
         }
@@ -63,7 +70,18 @@ impl ActivityRegistry {
 
         caller.require_auth();
 
+        let current_record_count: u32 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::RecordCount)
+            .unwrap_or(0);
+
+        let record_id = current_record_count
+            .checked_add(1)
+            .ok_or(ActivityRegistryError::RecordLimitReached)?;
+
         let activity = Activity {
+            record_id,
             caller: caller.clone(),
             recipient: recipient.clone(),
             count,
@@ -71,33 +89,39 @@ impl ActivityRegistry {
 
         env.storage()
             .persistent()
-            .set(&DataKey::Activity(recipient), &activity);
-
-        let record_count: u32 = env
-            .storage()
-            .persistent()
-            .get(&DataKey::RecordCount)
-            .unwrap_or(0);
+            .set(&DataKey::LatestActivity(recipient), &activity);
 
         env.storage()
             .persistent()
-            .set(&DataKey::RecordCount, &(record_count + 1));
+            .set(&DataKey::ActivityById(record_id), &activity);
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::RecordCount, &record_id);
 
         ActivityRecordedEvent {
             caller,
+            record_id,
             recipient: activity.recipient,
             count,
         }
         .publish(&env);
 
-        Ok(())
+        Ok(record_id)
     }
 
     /// Returns the most recently recorded activity for a recipient.
     pub fn get_activity(env: Env, recipient: String) -> Option<Activity> {
         env.storage()
             .persistent()
-            .get(&DataKey::Activity(recipient))
+            .get(&DataKey::LatestActivity(recipient))
+    }
+
+    /// Returns an immutable activity record by its monotonic record ID.
+    pub fn get_activity_by_id(env: Env, record_id: u32) -> Option<Activity> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::ActivityById(record_id))
     }
 
     /// Returns the total number of recorded activities.

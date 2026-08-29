@@ -21,16 +21,22 @@ fn records_and_reads_an_activity() {
     assert_eq!(
         client.get_activity(&recipient),
         Some(Activity {
+            record_id: 1,
             caller: caller.clone(),
             recipient: recipient.clone(),
             count: 1,
         })
+    );
+    assert_eq!(
+        client.get_activity_by_id(&1),
+        client.get_activity(&recipient)
     );
     assert_eq!(client.get_record_count(), 1);
     assert_eq!(
         env.events().all(),
         [ActivityRecordedEvent {
             caller,
+            record_id: 1,
             recipient,
             count: 1,
         }

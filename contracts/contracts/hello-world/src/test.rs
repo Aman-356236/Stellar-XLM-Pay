@@ -1,7 +1,9 @@
 #![cfg(test)]
 
 use super::*;
-use activity_registry::{Activity, ActivityRegistry, ActivityRegistryClient};
+use activity_registry::{
+    Activity, ActivityRecordedEvent, ActivityRegistry, ActivityRegistryClient,
+};
 use soroban_sdk::{
     testutils::{Address as _, Events as _},
     vec, Address, Env, Event as _, String,
@@ -80,10 +82,7 @@ fn records_a_greeting_through_the_configured_registry() {
 
     hello.mock_all_auths().initialize(&admin);
     hello.mock_all_auths().set_registry(&admin, &registry_id);
-    let words = hello
-        .mock_all_auths_allowing_non_root_auth()
-        .hello_and_record(&recipient)
-        .unwrap();
+    let words = hello.hello_and_record(&recipient).unwrap();
 
     assert_eq!(
         words,
@@ -94,10 +93,36 @@ fn records_a_greeting_through_the_configured_registry() {
     assert_eq!(
         registry.get_activity(&recipient),
         Some(Activity {
+            record_id: 1,
             caller: hello_id,
-            recipient,
+            recipient: recipient.clone(),
             count: 1,
         })
+    );
+    assert_eq!(
+        env.events().all(),
+        [
+            ActivityRecordedEvent {
+                caller: hello_id.clone(),
+                record_id: 1,
+                recipient: recipient.clone(),
+                count: 1,
+            }
+            .to_xdr(&env, &registry_id),
+            HelloEvent {
+                to: recipient.clone(),
+                message: String::from_str(&env, "Hello"),
+                count: 1,
+            }
+            .to_xdr(&env, &hello_id),
+            GreetingRecordedEvent {
+                registry: registry_id,
+                record_id: 1,
+                recipient,
+                count: 1,
+            }
+            .to_xdr(&env, &hello_id),
+        ]
     );
 }
 
@@ -151,10 +176,9 @@ fn external_call_failure_does_not_change_hello_state() {
         .set_registry(&admin, &unregistered_registry);
 
     assert_eq!(
-        hello
-            .mock_all_auths_allowing_non_root_auth()
-            .try_hello_and_record(&String::from_str(&env, "Dev")),
+        hello.try_hello_and_record(&String::from_str(&env, "Dev")),
         Err(Ok(HelloWorldError::RegistryCallFailed))
     );
     assert_eq!(hello.get_count(), 0);
+    assert!(env.events().all().events().is_empty());
 }

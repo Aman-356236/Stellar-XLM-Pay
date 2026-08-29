@@ -37,7 +37,7 @@ pub trait ActivityRegistryInterface {
         caller: Address,
         recipient: String,
         count: u32,
-    ) -> Result<(), activity_registry::ActivityRegistryError>;
+    ) -> Result<u32, activity_registry::ActivityRegistryError>;
 }
 
 #[contractevent]
@@ -45,6 +45,19 @@ pub trait ActivityRegistryInterface {
 pub struct HelloEvent {
     pub to: String,
     pub message: String,
+    pub count: u32,
+}
+
+/// Stable frontend event emitted only after a registry record succeeds.
+///
+/// Topics are `greeting`, `v1`, and the configured registry contract address.
+#[contractevent(topics = ["greeting", "v1"])]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GreetingRecordedEvent {
+    #[topic]
+    pub registry: Address,
+    pub record_id: u32,
+    pub recipient: String,
     pub count: u32,
 }
 
@@ -149,9 +162,10 @@ impl Contract {
         let registry_result =
             registry_client.try_record_greeting(&env.current_contract_address(), &to, &new_count);
 
-        if registry_result != Ok(Ok(())) {
-            return Err(HelloWorldError::RegistryCallFailed);
-        }
+        let record_id = match registry_result {
+            Ok(Ok(record_id)) if record_id > 0 => record_id,
+            _ => return Err(HelloWorldError::RegistryCallFailed),
+        };
 
         let message = String::from_str(&env, "Hello");
         env.storage().instance().set(&key, &new_count);
@@ -159,6 +173,14 @@ impl Contract {
         HelloEvent {
             to: to.clone(),
             message: message.clone(),
+            count: new_count,
+        }
+        .publish(&env);
+
+        GreetingRecordedEvent {
+            registry,
+            record_id,
+            recipient: to.clone(),
             count: new_count,
         }
         .publish(&env);
