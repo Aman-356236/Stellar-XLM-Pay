@@ -1,5 +1,7 @@
 import {
   useEffect,
+  useCallback,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -21,8 +23,15 @@ import {
   rpc,
   nativeToScVal,
   scValToNative,
-  xdr,
 } from '@stellar/stellar-sdk'
+
+import {
+  validatePayment,
+} from './lib/paymentValidation'
+
+import {
+  networkConfig,
+} from './config/network'
 
 import './App.css'
 
@@ -33,15 +42,6 @@ StellarWalletsKit.init({
 StellarWalletsKit.setNetwork(
   Networks.TESTNET,
 )
-
-const CONTRACT_ID =
-  'CBR2BJNOVWPBPZX44LH5YNXXJ3FAMZ4XTRHO3UVBYRDNQJBZUEVZAUXI'
-
-const HORIZON_URL =
-  'https://horizon-testnet.stellar.org'
-
-const RPC_URL =
-  'https://soroban-testnet.stellar.org'
 
 function App() {
   const [walletAddress, setWalletAddress] =
@@ -104,15 +104,15 @@ function App() {
   const [contractLoading, setContractLoading] =
     useState(false)
 
-  const server =
+  const server = useMemo(() =>
     new Horizon.Server(
-      HORIZON_URL,
-    )
+      networkConfig.horizonUrl,
+    ), [])
 
-  const rpcServer =
+  const rpcServer = useMemo(() =>
     new rpc.Server(
-      RPC_URL,
-    )
+      networkConfig.rpcUrl,
+    ), [])
 
   const eventSeenIds =
     useRef<Set<string>>(
@@ -261,97 +261,19 @@ function App() {
         return
       }
 
-      const cleanedRecipient =
-        recipient.trim()
+      const payment = validatePayment({
+        recipient,
+        amount,
+        walletAddress,
+        balance,
+      })
 
-      if (!cleanedRecipient) {
-        setError(
-          'Please enter a recipient address.',
-        )
+      if (!payment.valid) {
+        setError(payment.error)
         return
       }
 
-      if (
-        !cleanedRecipient.startsWith('G') ||
-        cleanedRecipient.length !== 56
-      ) {
-        setError(
-          'Please enter a valid Stellar recipient address.',
-        )
-        return
-      }
-
-      if (
-        cleanedRecipient ===
-        walletAddress
-      ) {
-        setError(
-          'You cannot send XLM to your own wallet.',
-        )
-        return
-      }
-
-      const cleanedAmount =
-        amount.trim()
-
-      if (!cleanedAmount) {
-        setError(
-          'Please enter an XLM amount.',
-        )
-        return
-      }
-
-      const numericAmount =
-        Number(cleanedAmount)
-
-      if (
-        !Number.isFinite(
-          numericAmount,
-        ) ||
-        numericAmount <= 0
-      ) {
-        setError(
-          'Please enter a valid XLM amount greater than 0.',
-        )
-        return
-      }
-
-      const decimalPart =
-        cleanedAmount.split('.')[1]
-
-      if (
-        decimalPart &&
-        decimalPart.length > 7
-      ) {
-        setError(
-          'XLM amount cannot have more than 7 decimal places.',
-        )
-        return
-      }
-
-      const currentBalance =
-        Number(balance)
-
-      if (
-        !Number.isFinite(
-          currentBalance,
-        )
-      ) {
-        setError(
-          'Unable to read your current XLM balance.',
-        )
-        return
-      }
-
-      if (
-        numericAmount >=
-        currentBalance
-      ) {
-        setError(
-          'Insufficient XLM balance. Keep some XLM available for the transaction fee.',
-        )
-        return
-      }
+      const { cleanedAmount, cleanedRecipient } = payment
 
       setLoading(true)
 
@@ -526,7 +448,7 @@ function App() {
         const contractOperation =
           Operation.invokeContractFunction({
             contract:
-              CONTRACT_ID,
+              networkConfig.contractId,
             function:
               'hello',
             args: [
@@ -559,7 +481,9 @@ function App() {
           )
 
         if (
-          simulation.error
+          rpc.Api.isSimulationError(
+            simulation,
+          )
         ) {
           throw new Error(
             String(
@@ -870,7 +794,7 @@ function App() {
       )
     }
 
-  const pollContractEvents =
+  const pollContractEvents = useCallback(
     async () => {
       try {
         const latestLedgerResponse =
@@ -907,13 +831,11 @@ function App() {
               {
                 type: 'contract',
                 contractIds: [
-                  CONTRACT_ID,
+                  networkConfig.contractId,
                 ],
               },
             ],
-            pagination: {
-              limit: 100,
-            },
+            limit: 100,
           })
 
         for (
@@ -934,10 +856,7 @@ function App() {
           try {
             const eventValue =
               scValToNative(
-                xdr.ScVal.fromXDR(
-                  event.value,
-                  'base64',
-                ),
+              event.value,
               )
 
             const readableEvent =
@@ -994,7 +913,9 @@ function App() {
           'Event listener reconnecting...',
         )
       }
-    }
+    },
+    [rpcServer],
+  )
 
   useEffect(() => {
     let active = true
@@ -1028,7 +949,7 @@ function App() {
         )
       }
     }
-  }, [])
+  }, [pollContractEvents])
 
   const shortWalletAddress =
     walletAddress
@@ -1635,7 +1556,7 @@ function App() {
               </span>
 
               <code>
-                {CONTRACT_ID}
+                {networkConfig.contractId}
               </code>
             </div>
           </div>

@@ -1,10 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String,
-};
+use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 #[test]
 fn records_and_reads_an_activity() {
@@ -45,11 +42,7 @@ fn rejects_invalid_activity_input() {
     let recipient = String::from_str(&env, "Dev");
 
     assert_eq!(
-        client.try_record_greeting(
-            &caller,
-            &String::from_str(&env, ""),
-            &1
-        ),
+        client.try_record_greeting(&caller, &String::from_str(&env, ""), &1),
         Err(Ok(ActivityRegistryError::InvalidRecipient))
     );
 

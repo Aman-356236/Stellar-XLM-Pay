@@ -6,6 +6,79 @@ Stellar XLM Pay is a decentralized payment application that allows users to conn
 
 The application also demonstrates **multi-wallet integration, smart contract invocation, actual contract return-value reading, real-time contract event handling, and transaction status tracking**.
 
+## Orange Belt submission status
+
+This repository is the Orange Belt iteration. It preserves the existing payment and `hello` contract behavior while adding a tested cross-contract activity registry, a typed event listener compatible with the current Stellar SDK, frontend unit tests, combined CI, and a repeatable Testnet deployment script.
+
+| Orange Belt requirement | Current implementation | Remaining manual evidence |
+| --- | --- | --- |
+| Advanced contracts and inter-contract communication | `hello-world` configures and calls `activity-registry` through a typed Soroban client; failures do not commit the counter update. | Deploy the current pair to Testnet. |
+| Event streaming and real-time updates | The frontend polls Soroban RPC every four seconds, deduplicates contract events, and displays event payload, ledger, and transaction hash. | Capture a live-event screenshot after deployment. |
+| Frontend error/loading states | Wallet, payment, contract-call, balance-refresh, copy, and event-reconnect states are represented in the UI. | None. |
+| Frontend tests | Vitest validates payment input, self-payment prevention, 7-decimal XLM precision, and fee reserve behavior (5 tests). | None. |
+| Contract tests | 9 Rust tests cover contract behavior, registry persistence, authorization, events, and rollback on external-call failure. | None. |
+| CI/CD | GitHub Actions runs frontend tests/lint/build and contract format/test/build; built WASM files are uploaded as artifacts. | Push the branch and capture the successful Actions run. |
+| Deployment workflow | `scripts/deploy-testnet.ps1` builds, deploys, initializes, and connects both contracts without persisting a secret. | Run it with a funded Testnet account and record both IDs/transaction hashes. |
+| Mobile responsive UI | Existing layout has 850px, 600px, and 420px breakpoints for cards, forms, grids, wallet controls, and footer. | Capture a phone-width screenshot. |
+| Live demo and video | The app can be served with Vite; a 1–2 minute recording outline is included below. | Publish a hosting URL and record/upload the video. |
+
+### Configuration
+
+The app uses Testnet defaults and supports build-time overrides. Copy no secrets into these values:
+
+```bash
+VITE_HELLO_CONTRACT_ID=<deployed-hello-contract-id>
+VITE_HORIZON_URL=https://horizon-testnet.stellar.org
+VITE_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+```
+
+The checked-in default Hello contract ID is `CBR2BJNOVWPBPZX44LH5YNXXJ3FAMZ4XTRHO3UVBYRDNQJBZUEVZAUXI`. The current registry integration must be deployed and configured using the script below before the frontend can call `hello_and_record` on a newly deployed pair.
+
+### Testnet deployment workflow
+
+The deployment script intentionally requires credentials only in the current shell and never writes them into the repository:
+
+```powershell
+$env:STELLAR_SECRET_KEY = "S..." # funded Testnet account; do not commit this
+$env:STELLAR_PUBLIC_KEY = "G..." # matching public key
+.\scripts\deploy-testnet.ps1
+```
+
+It prints the registry and Hello contract IDs after it deploys, initializes the Hello contract admin, and configures the registry address. Update `VITE_HELLO_CONTRACT_ID` with the printed Hello contract ID before building the hosted frontend.
+
+### Quality checks
+
+```bash
+npm test
+npm run lint
+npm run build
+
+cd contracts
+cargo fmt --all -- --check
+cargo test --workspace
+stellar contract build --locked
+```
+
+### Demo recording outline (1–2 minutes)
+
+1. Show the GitHub repository, README, and green GitHub Actions run.
+2. Open the mobile-width frontend, connect a Testnet wallet, and show its XLM balance.
+3. Send a small Testnet XLM payment and open its transaction hash in a Stellar explorer.
+4. Call the deployed contract, show the return value and live event (payload, ledger, and hash).
+5. Show the two deployed contract addresses and the deployment transaction in the explorer.
+
+### Submission links to add after manual deployment
+
+| Evidence | Value |
+| --- | --- |
+| Live demo | Add the public hosting URL after publishing. |
+| Activity registry contract | Add the Testnet address printed by the deployment script. |
+| Hello contract | Add the Testnet address printed by the deployment script. |
+| Deployment transaction | Add the resulting Testnet transaction hash. |
+| Mobile screenshot | Add a genuine phone-width screenshot. |
+| CI screenshot | Add a screenshot of the green GitHub Actions workflow. |
+| Demo video | Add the public 1–2 minute recording URL. |
+
 ---
 
 ## ✨ Features

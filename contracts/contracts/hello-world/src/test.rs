@@ -1,9 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use activity_registry::{
-    Activity, ActivityRegistry, ActivityRegistryClient,
-};
+use activity_registry::{Activity, ActivityRegistry, ActivityRegistryClient};
 use soroban_sdk::{
     testutils::{Address as _, Events as _},
     vec, Address, Env, Event as _, String,
