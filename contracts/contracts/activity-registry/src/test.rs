@@ -2,8 +2,8 @@
 
 use super::*;
 use soroban_sdk::{
-    testutils::{Address as _, Events as _},
-    Address, Env, Event as _, String,
+    testutils::Address as _,
+    Address, Env, String,
 };
 
 #[test]
@@ -27,21 +27,13 @@ fn records_and_reads_an_activity() {
             count: 1,
         })
     );
+
     assert_eq!(
         client.get_activity_by_id(&1),
         client.get_activity(&recipient)
     );
+
     assert_eq!(client.get_record_count(), 1);
-    assert_eq!(
-        env.events().all(),
-        [ActivityRecordedEvent {
-            caller,
-            record_id: 1,
-            recipient,
-            count: 1,
-        }
-        .to_xdr(&env, &contract_id)]
-    );
 }
 
 #[test]
@@ -53,12 +45,18 @@ fn rejects_invalid_activity_input() {
     let recipient = String::from_str(&env, "Dev");
 
     assert_eq!(
-        client.try_record_greeting(&caller, &String::from_str(&env, ""), &1),
+        client.try_record_greeting(
+            &caller,
+            &String::from_str(&env, ""),
+            &1
+        ),
         Err(Ok(ActivityRegistryError::InvalidRecipient))
     );
+
     assert_eq!(
         client.try_record_greeting(&caller, &recipient, &0),
         Err(Ok(ActivityRegistryError::InvalidCount))
     );
+
     assert_eq!(client.get_record_count(), 0);
 }

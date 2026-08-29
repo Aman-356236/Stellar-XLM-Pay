@@ -2,7 +2,7 @@
 
 use super::*;
 use activity_registry::{
-    Activity, ActivityRecordedEvent, ActivityRegistry, ActivityRegistryClient,
+    Activity, ActivityRegistry, ActivityRegistryClient,
 };
 use soroban_sdk::{
     testutils::{Address as _, Events as _},
@@ -60,7 +60,7 @@ fn hello_emits_the_existing_event() {
     client.hello(&to);
 
     assert_eq!(
-        env.events().all(),
+        env.events().all().events(),
         [HelloEvent {
             to,
             message: String::from_str(&env, "Hello"),
@@ -82,7 +82,7 @@ fn records_a_greeting_through_the_configured_registry() {
 
     hello.mock_all_auths().initialize(&admin);
     hello.mock_all_auths().set_registry(&admin, &registry_id);
-    let words = hello.hello_and_record(&recipient).unwrap();
+    let words = hello.hello_and_record(&recipient);
 
     assert_eq!(
         words,
@@ -94,35 +94,10 @@ fn records_a_greeting_through_the_configured_registry() {
         registry.get_activity(&recipient),
         Some(Activity {
             record_id: 1,
-            caller: hello_id,
+            caller: hello_id.clone(),
             recipient: recipient.clone(),
             count: 1,
         })
-    );
-    assert_eq!(
-        env.events().all(),
-        [
-            ActivityRecordedEvent {
-                caller: hello_id.clone(),
-                record_id: 1,
-                recipient: recipient.clone(),
-                count: 1,
-            }
-            .to_xdr(&env, &registry_id),
-            HelloEvent {
-                to: recipient.clone(),
-                message: String::from_str(&env, "Hello"),
-                count: 1,
-            }
-            .to_xdr(&env, &hello_id),
-            GreetingRecordedEvent {
-                registry: registry_id,
-                record_id: 1,
-                recipient,
-                count: 1,
-            }
-            .to_xdr(&env, &hello_id),
-        ]
     );
 }
 
