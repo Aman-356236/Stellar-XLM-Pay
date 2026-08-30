@@ -962,6 +962,47 @@ The interface provides loading indicators, transaction feedback, contract result
 
 ---
 
+# 📸 Screenshots
+
+### Wallet Options
+
+![Wallet Options](screenshots/wallet-options.png)
+
+### Wallet Connected
+
+![Wallet Connected](screenshots/wallet-connected.png)
+
+### XLM Balance
+
+![XLM Balance](screenshots/balance-displayed.png)
+
+### Successful Transaction
+
+![Successful Transaction](screenshots/successful-transaction.png)
+
+### Transaction Result
+
+![Transaction Result](screenshots/transaction-result.png)
+
+### Soroban Contract Call
+
+![Soroban Contract Call](screenshots/contract-call.png)
+
+### Contract Event
+
+![Contract Event](screenshots/contract-event.png)
+
+### CI/CD Success
+
+![GitHub Actions CI/CD Success](screenshots/ci-cd-success.png)
+
+### Mobile Responsive UI
+
+![Mobile Responsive UI](screenshots/mobile-responsive.png)
+
+
+---
+
 # 📚 Project Documentation
 
 The repository contains documentation for:
